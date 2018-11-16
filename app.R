@@ -106,7 +106,7 @@ ui <- fluidPage(
 # Define server logic
 server <- function(input, output) {
 
-  # Get any specific conductance calibration data from uploaded files
+  # Get new specific conductance calibration data from uploaded files
   SpCond.uploads <- reactive({
     data.in <- readFiles(input$files.in$datapath, input$files.in$name, "*_CalibrationSpCond.csv")
     if (nrow(data.in > 0)) {
@@ -115,16 +115,21 @@ server <- function(input, output) {
     data.in
   })
   
-  # Get any dissolved oxygen calibration data from uploaded files
+  # Get new dissolved oxygen calibration data from uploaded files
   DO.uploads <- reactive({
     data.in <- readFiles(input$files.in$datapath, input$files.in$name, "*_CalibrationDO.csv")
     if (nrow(data.in > 0)) {
-      data.in$CalibrationTime <- format(data.in$CalibrationTime, "%H:%M:%S")  # Format times so they display properly
+      # Clean up incoming data and filter out rows that are already in the database and haven't been modified
+      data.in <- data.in %>% 
+        mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S")) %>%  # Format times so they display properly
+        left_join(db.ref.wqinstr, by = c("DOInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
+        select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive) %>%  # Get rid of unnecessary rows
+        rename(DOInstrumentID = ID, DOInstrumentLabel = Label)
     }
     data.in
   })
   
-  # Get any pH calibration data from uploaded files
+  # Get new pH calibration data from uploaded files
   pH.uploads <- reactive({
     data.in <- readFiles(input$files.in$datapath, input$files.in$name, "*_CalibrationpH.csv")
     if (nrow(data.in > 0)) {
