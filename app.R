@@ -1,6 +1,27 @@
 library(shiny)
 library(odbc)
+library(dbplyr)
 library(tidyverse)
+library(pool)
+library(DT)
+
+# DS.dsn <- 'driver={SQL Server Native Client 11.0};server=INPLAKE36792JNX\\SARAH_LOCAL;database=Testing_MOJN_DS_Water;trusted_connection=Yes;applicationintent=readonly'
+# Database connection
+pool <- dbPool(drv = odbc::odbc(),
+               Driver = "SQL Server Native Client 11.0",
+               Server = "INPLAKE36792JNX\\SARAH_LOCAL",
+               Database = "MOJN_SharedTables",
+               Trusted_Connection = "Yes")
+
+onStop(function() {
+  poolClose(pool)
+})
+
+# Load table pointers to calibration data and refs:
+db.SpCond <- tbl(pool, in_schema("data", "CalibrationSpCond"))
+db.DO <- tbl(pool, in_schema("data", "CalibrationDO"))
+db.pH <- tbl(pool, in_schema("data", "CalibrationpH"))
+db.ref.wqinstr <- tbl(pool, in_schema("ref", "WaterQualityInstrument"))
 
 # Functions
 readFiles <- function (file.paths, file.names, search.string = "*") {
@@ -26,6 +47,21 @@ readFiles <- function (file.paths, file.names, search.string = "*") {
   return(data.in)
 }
 
+singleSelectDT <- function (data) {
+  # Creates a DT datatable with single-row selection enabled
+  #
+  # Args:
+  #   data: A dataframe
+  #
+  # Returns:
+  #   A DT datatable with single-row selection enabled
+  
+    datatable(data, selection = list(
+      mode = "single",
+      target = "row"
+    ))
+}
+
 # Define UI for application that imports calibration data from .csv and uploads to database
 ui <- fluidPage(
   
@@ -45,15 +81,21 @@ ui <- fluidPage(
       tabsetPanel(type = "tabs",
                   tabPanel("SpCond",
                            h3("Uploaded data"),
-                           tableOutput("SpCond.in")
+                           dataTableOutput("SpCond.in"),
+                           h3("Data in database"),
+                           dataTableOutput("db.SpCond")
                   ),
                   tabPanel("DO",
                            h3("Uploaded data"),
-                           tableOutput("DO.in")
+                           dataTableOutput("DO.in"),
+                           h3("Data in database"),
+                           dataTableOutput("db.DO")
                   ),
                   tabPanel("pH",
                            h3("Uploaded data"),
-                           tableOutput("pH.in")
+                           dataTableOutput("pH.in"),
+                           h3("Data in database"),
+                           dataTableOutput("db.pH")
                   )
       )
       
@@ -63,18 +105,19 @@ ui <- fluidPage(
 
 # Define server logic
 server <- function(input, output) {
-  # Get any dissolved oxygen calibration data from uploaded files
-  DO.uploads <- reactive({
-    data.in <- readFiles(input$files.in$datapath, input$files.in$name, "*_CalibrationDO.csv")
+
+  # Get any specific conductance calibration data from uploaded files
+  SpCond.uploads <- reactive({
+    data.in <- readFiles(input$files.in$datapath, input$files.in$name, "*_CalibrationSpCond.csv")
     if (nrow(data.in > 0)) {
       data.in$CalibrationTime <- format(data.in$CalibrationTime, "%H:%M:%S")  # Format times so they display properly
     }
     data.in
   })
   
-  # Get any specific conductance calibration data from uploaded files
-  SpCond.uploads <- reactive({
-    data.in <- readFiles(input$files.in$datapath, input$files.in$name, "*_CalibrationSpCond.csv")
+  # Get any dissolved oxygen calibration data from uploaded files
+  DO.uploads <- reactive({
+    data.in <- readFiles(input$files.in$datapath, input$files.in$name, "*_CalibrationDO.csv")
     if (nrow(data.in > 0)) {
       data.in$CalibrationTime <- format(data.in$CalibrationTime, "%H:%M:%S")  # Format times so they display properly
     }
@@ -90,9 +133,13 @@ server <- function(input, output) {
     data.in
   })
   
-  output$SpCond.in <- renderTable(SpCond.uploads())
-  output$DO.in <- renderTable(DO.uploads())
-  output$pH.in <- renderTable(pH.uploads())
+  # Render new calibration data from input csv's and existing calibration data from the database as datatables
+  output$SpCond.in <- renderDT(singleSelectDT(SpCond.uploads()))
+  output$db.SpCond <- renderDT(singleSelectDT(db.SpCond %>% collect()))
+  output$DO.in <- renderDT(singleSelectDT(DO.uploads()))
+  output$db.DO <- renderDT(singleSelectDT(db.DO %>% collect()))
+  output$pH.in <- renderDT(singleSelectDT(pH.uploads()))
+  output$db.pH <- renderDT(singleSelectDT(db.pH %>% collect()))
 }
 
 # Run the application 
