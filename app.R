@@ -81,21 +81,15 @@ ui <- fluidPage(
       tabsetPanel(type = "tabs",
                   tabPanel("SpCond",
                            h3("Uploaded data"),
-                           dataTableOutput("SpCond.in"),
-                           h3("Data in database"),
-                           dataTableOutput("db.SpCond")
+                           dataTableOutput("SpCond.in")
                   ),
                   tabPanel("DO",
                            h3("Uploaded data"),
-                           dataTableOutput("DO.in"),
-                           h3("Data in database"),
-                           dataTableOutput("db.DO")
+                           dataTableOutput("DO.in")
                   ),
                   tabPanel("pH",
                            h3("Uploaded data"),
-                           dataTableOutput("pH.in"),
-                           h3("Data in database"),
-                           dataTableOutput("db.pH")
+                           dataTableOutput("pH.in")
                   )
       )
       
@@ -140,11 +134,8 @@ server <- function(input, output) {
   
   # Render new calibration data from input csv's and existing calibration data from the database as datatables
   output$SpCond.in <- renderDT(singleSelectDT(SpCond.uploads()))
-  output$db.SpCond <- renderDT(singleSelectDT(db.SpCond %>% collect()))
   output$DO.in <- renderDT(singleSelectDT(DO.uploads()))
-  output$db.DO <- renderDT(singleSelectDT(db.DO %>% collect()))
   output$pH.in <- renderDT(singleSelectDT(pH.uploads()))
-  output$db.pH <- renderDT(singleSelectDT(db.pH %>% collect()))
 }
 
 # Run the application 
