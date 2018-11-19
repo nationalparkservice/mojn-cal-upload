@@ -82,7 +82,8 @@ ui <- fluidPage(
       tabsetPanel(type = "tabs",
                   tabPanel("SpCond",
                            h3("Uploaded data"),
-                           dataTableOutput("SpCond.in")
+                           dataTableOutput("SpCond.in"),
+                           textInput("SpCond.date.edit", "Calibration date")
                   ),
                   tabPanel("DO",
                            h3("Uploaded data"),
@@ -149,7 +150,21 @@ server <- function(input, output, session) {
         singleSelectDT(col.names = c('Instrument', 'Date', 'Time', 'Pre (µS/cm)', 'Post (µS/cm)'))
     }
   })
-
+  
+  # Populate editable input boxes with values from the selected row
+  observe({
+    input$SpCond.in_rows_selected
+    # TODO: Check if there are unsaved changes in the input boxes before deselecting a row or selecting a new row
+    isolate({
+      # If a row is selected, populate input boxes with values from that row
+      if (length(input$SpCond.in_rows_selected) == 1) {
+        updateTextInput(session = session, inputId = "SpCond.date.edit", value = SpCond.uploads()$CalibrationDate[input$SpCond.in_rows_selected])
+        # If no rows are selected, clear input boxes
+      } else {
+        updateTextInput(session = session, inputId = "SpCond.date.edit", value = "")
+      }
+    })
+  })
   
   output$DO.in <- renderDT(singleSelectDT(DO.uploads()))
   output$pH.in <- renderDT(singleSelectDT(pH.uploads()))
