@@ -56,11 +56,11 @@ singleSelectDT <- function (data, col.names) {
   # Returns:
   #   A DT datatable with single-row selection enabled
   
-    datatable(data, selection = list(
-      mode = "single",
-      target = "row"),
-      colnames = col.names
-    )
+  datatable(data, selection = list(
+    mode = "single",
+    target = "row"),
+    colnames = col.names
+  )
 }
 
 # Define UI for application that imports calibration data from .csv and uploads to database
@@ -101,7 +101,7 @@ ui <- fluidPage(
 
 # Define server logic
 server <- function(input, output, session) {
-
+  
   # Get new specific conductance calibration data from uploaded files
   SpCond.uploads <- reactive({
     data.in <- readFiles(input$files.in$datapath, input$files.in$name, "*_CalibrationSpCond.csv")
