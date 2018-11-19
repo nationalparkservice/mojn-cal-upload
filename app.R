@@ -47,7 +47,7 @@ readFiles <- function (file.paths, file.names, search.string = "*") {
   return(data.in)
 }
 
-singleSelectDT <- function (data) {
+singleSelectDT <- function (data, col.names) {
   # Creates a DT datatable with single-row selection enabled
   #
   # Args:
@@ -58,8 +58,9 @@ singleSelectDT <- function (data) {
   
     datatable(data, selection = list(
       mode = "single",
-      target = "row"
-    ))
+      target = "row"),
+      colnames = col.names
+    )
 }
 
 # Define UI for application that imports calibration data from .csv and uploads to database
@@ -98,13 +99,17 @@ ui <- fluidPage(
 )
 
 # Define server logic
-server <- function(input, output) {
+server <- function(input, output, session) {
 
   # Get new specific conductance calibration data from uploaded files
   SpCond.uploads <- reactive({
     data.in <- readFiles(input$files.in$datapath, input$files.in$name, "*_CalibrationSpCond.csv")
     if (nrow(data.in > 0)) {
-      data.in$CalibrationTime <- format(data.in$CalibrationTime, "%H:%M:%S")  # Format times so they display properly
+      data.in <- data.in %>%
+        mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S")) %>%  # Format times so they display properly
+        left_join(db.ref.wqinstr, by = c("SpCondInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
+        select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive) %>%  # Get rid of unnecessary columns
+        rename(SpCondInstrumentID = ID, SpCondInstrumentLabel = Label)
     }
     data.in
   })
@@ -117,7 +122,7 @@ server <- function(input, output) {
       data.in <- data.in %>% 
         mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S")) %>%  # Format times so they display properly
         left_join(db.ref.wqinstr, by = c("DOInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
-        select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive) %>%  # Get rid of unnecessary rows
+        select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive) %>%  # Get rid of unnecessary columns
         rename(DOInstrumentID = ID, DOInstrumentLabel = Label)
     }
     data.in
@@ -127,13 +132,25 @@ server <- function(input, output) {
   pH.uploads <- reactive({
     data.in <- readFiles(input$files.in$datapath, input$files.in$name, "*_CalibrationpH.csv")
     if (nrow(data.in > 0)) {
-      data.in$CalibrationTime <- format(data.in$CalibrationTime, "%H:%M:%S")  # Format times so they display properly
+      data.in <- data.in %>%
+        mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S")) %>%  # Format times so they display properly
+        left_join(db.ref.wqinstr, by = c("pHInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
+        select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive) %>%  # Get rid of unnecessary columns
+        rename(pHInstrumentID = ID, pHInstrumentLabel = Label)
     }
     data.in
   })
   
   # Render new calibration data from input csv's and existing calibration data from the database as datatables
-  output$SpCond.in <- renderDT(singleSelectDT(SpCond.uploads()))
+  output$SpCond.in <- renderDT({
+    if (nrow(SpCond.uploads()) > 0) {
+      SpCond.uploads() %>%
+        select(SpCondInstrumentLabel, CalibrationDate, CalibrationTime, PreCalibrationReading_microS_per_cm, PostCalibrationReading_microS_per_cm) %>%
+        singleSelectDT(col.names = c('Instrument', 'Date', 'Time', 'Pre (µS/cm)', 'Post (µS/cm)'))
+    }
+  })
+
+  
   output$DO.in <- renderDT(singleSelectDT(DO.uploads()))
   output$pH.in <- renderDT(singleSelectDT(pH.uploads()))
 }
