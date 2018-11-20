@@ -22,7 +22,8 @@ db.SpCond <- tbl(pool, in_schema("data", "CalibrationSpCond"))
 db.DO <- tbl(pool, in_schema("data", "CalibrationDO"))
 db.pH <- tbl(pool, in_schema("data", "CalibrationpH"))
 db.ref.wqinstr <- tbl(pool, in_schema("ref", "WaterQualityInstrument"))
-
+dropdown.wqinstr <- arrange(db.ref.wqinstr, desc(IsActive), Model) %>% collect()
+dropdown.wqinstr <- setNames(dropdown.wqinstr$ID, dropdown.wqinstr$Label)
 # Functions
 readFiles <- function (file.paths, file.names, search.string = "*", col.types = NULL) {
   # Given a list of .csv file paths and file names, reads data into a data frame from files whose name matches the search string.
@@ -83,12 +84,15 @@ ui <- fluidPage(
                   tabPanel("SpCond",
                            h3("Uploaded data"),
                            dataTableOutput("SpCond.in"),
-                           textInput("SpCond.date.edit", "Calibration date"),
+                           dateInput("SpCond.date.edit", "Calibration date",
+                                     value = ""),
                            textInput("SpCond.time.edit", "Calibration time"),
                            textInput("SpCond.std.edit", "Standard (µS/cm)"),
                            textInput("SpCond.precal.edit", "Pre-cal reading (µS/cm)"),
                            textInput("SpCond.postcal.edit", "Post-cal reading (µS/cm)"),
-                           textInput("SpCond.instr.edit", "SpCond instrument"),
+                           selectInput("SpCond.instr.edit", "SpCond instrument",
+                                       choices = c("", dropdown.wqinstr),
+                                       selected = NA),
                            textAreaInput("SpCond.notes.edit", "Notes")
                   ),
                   tabPanel("DO",
@@ -176,24 +180,23 @@ server <- function(input, output, session) {
     isolate({
       # If a row is selected, populate input boxes with values from that row
       if (length(input$SpCond.in_rows_selected) == 1) {
-        # TODO: Use the appropriate input type for each data type instead of using text boxes for everything
-        updateTextInput(session = session, inputId = "SpCond.date.edit", value = SpCond.uploads()$CalibrationDate[input$SpCond.in_rows_selected])
+        updateDateInput(session = session, inputId = "SpCond.date.edit", value = SpCond.uploads()$CalibrationDate[input$SpCond.in_rows_selected])
         updateTextInput(session = session, inputId = "SpCond.time.edit", value = SpCond.uploads()$CalibrationTime[input$SpCond.in_rows_selected])
         updateTextInput(session = session, inputId = "SpCond.std.edit", value = SpCond.uploads()$StandardValue_microS_per_cm[input$SpCond.in_rows_selected])
         updateTextInput(session = session, inputId = "SpCond.precal.edit", value = SpCond.uploads()$PreCalibrationReading_microS_per_cm[input$SpCond.in_rows_selected])
         updateTextInput(session = session, inputId = "SpCond.postcal.edit", value = SpCond.uploads()$PostCalibrationReading_microS_per_cm[input$SpCond.in_rows_selected])
-        updateTextInput(session = session, inputId = "SpCond.instr.edit", value = SpCond.uploads()$SpCondInstrumentID[input$SpCond.in_rows_selected])
-        updateTextInput(session = session, inputId = "SpCond.notes.edit", value = SpCond.uploads()$Notes[input$SpCond.in_rows_selected])
+        updateSelectInput(session = session, inputId = "SpCond.instr.edit", selected = SpCond.uploads()$SpCondInstrumentID[input$SpCond.in_rows_selected])
+        updateTextAreaInput(session = session, inputId = "SpCond.notes.edit", value = SpCond.uploads()$Notes[input$SpCond.in_rows_selected])
         
       # If no rows are selected, clear input boxes
       } else {
-        updateTextInput(session = session, inputId = "SpCond.date.edit", value = "")
+        updateDateInput(session = session, inputId = "SpCond.date.edit", value = NA)
         updateTextInput(session = session, inputId = "SpCond.time.edit", value = "")
         updateTextInput(session = session, inputId = "SpCond.std.edit", value = "")
         updateTextInput(session = session, inputId = "SpCond.precal.edit", value = "")
         updateTextInput(session = session, inputId = "SpCond.postcal.edit", value = "")
-        updateTextInput(session = session, inputId = "SpCond.instr.edit", value = "")
-        updateTextInput(session = session, inputId = "SpCond.notes.edit", value = "")
+        updateSelectInput(session = session, inputId = "SpCond.instr.edit", selected = "")
+        updateTextAreaInput(session = session, inputId = "SpCond.notes.edit", value = "")
       }
     })
   })
