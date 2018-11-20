@@ -24,7 +24,7 @@ db.pH <- tbl(pool, in_schema("data", "CalibrationpH"))
 db.ref.wqinstr <- tbl(pool, in_schema("ref", "WaterQualityInstrument"))
 
 # Functions
-readFiles <- function (file.paths, file.names, search.string = "*") {
+readFiles <- function (file.paths, file.names, search.string = "*", col.types = NULL) {
   # Given a list of .csv file paths and file names, reads data into a data frame from files whose name matches the search string.
   #
   # Args:
@@ -38,7 +38,7 @@ readFiles <- function (file.paths, file.names, search.string = "*") {
   file.paths <- file.paths[grepl(search.string, file.names)]
   
   if (length(file.paths > 0)) {
-    data.in <- bind_rows(lapply(file.paths, read_csv))
+    data.in <- bind_rows(lapply(file.paths, read_csv, col_types = col.types))
     data.in <- unique(data.in)  # Get rid of any duplicate rows of data
   } else {
     data.in <- data.frame()
@@ -110,10 +110,22 @@ server <- function(input, output, session) {
   
   # Get new specific conductance calibration data from uploaded files
   SpCond.uploads <- reactive({
-    data.in <- readFiles(input$files.in$datapath, input$files.in$name, "*_CalibrationSpCond.csv")
+    data.in <- readFiles(input$files.in$datapath,
+                         input$files.in$name,
+                         "*_CalibrationSpCond.csv",
+                         col.types = cols(CalibrationDate = col_character(),
+                                          CalibrationTime = col_time(),
+                                          StandardValue_microS_per_cm = col_double(),
+                                          PreCalibrationReading_microS_per_cm = col_double(),
+                                          PostCalibrationReading_microS_per_cm = col_double(),
+                                          SpCondInstrumentGUID = col_character(),
+                                          Notes = col_character(),
+                                          GUID = col_character(),
+                                          DateCreated = col_character()))
     if (nrow(data.in > 0)) {
       data.in <- data.in %>%
-        mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S")) %>%  # Format times so they display properly
+        mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S"),
+               CalibrationDate = as.Date(CalibrationDate, format = "%m/%d/%Y")) %>%  # Format dates and times so they display properly
         left_join(db.ref.wqinstr, by = c("SpCondInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
         select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive) %>%  # Get rid of unnecessary columns
         rename(SpCondInstrumentID = ID, SpCondInstrumentLabel = Label)
