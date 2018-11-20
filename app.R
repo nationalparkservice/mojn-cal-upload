@@ -87,13 +87,16 @@ ui <- fluidPage(
                            dateInput("SpCond.date.edit", "Calibration date",
                                      value = ""),
                            textInput("SpCond.time.edit", "Calibration time"),
-                           textInput("SpCond.std.edit", "Standard (µS/cm)"),
-                           textInput("SpCond.precal.edit", "Pre-cal reading (µS/cm)"),
-                           textInput("SpCond.postcal.edit", "Post-cal reading (µS/cm)"),
+                           numericInput("SpCond.std.edit", "Standard (µS/cm)", value = NA),
+                           numericInput("SpCond.precal.edit", "Pre-cal reading (µS/cm)", value = NA),
+                           numericInput("SpCond.postcal.edit", "Post-cal reading (µS/cm)", value = NA),
                            selectInput("SpCond.instr.edit", "SpCond instrument",
                                        choices = c("", dropdown.wqinstr),
                                        selected = NA),
-                           textAreaInput("SpCond.notes.edit", "Notes")
+                           textAreaInput("SpCond.notes.edit", "Notes"),
+                           actionButton("SpCond.delete", "Delete"),
+                           actionButton("SpCond.cancel", "Cancel"),
+                           actionButton("SpCond.save", "Save")
                   ),
                   tabPanel("DO",
                            h3("Uploaded data"),
@@ -113,6 +116,7 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   
   # Get new specific conductance calibration data from uploaded files
+  # TODO: Omit data that is already in the database
   SpCond.uploads <- reactive({
     data.in <- readFiles(input$files.in$datapath,
                          input$files.in$name,
@@ -131,7 +135,7 @@ server <- function(input, output, session) {
         mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S"),
                CalibrationDate = as.Date(CalibrationDate, format = "%m/%d/%Y")) %>%  # Format dates and times so they display properly
         left_join(db.ref.wqinstr, by = c("SpCondInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
-        select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive) %>%  # Get rid of unnecessary columns
+        select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -SpCondInstrumentGUID) %>%  # Get rid of unnecessary columns
         rename(SpCondInstrumentID = ID, SpCondInstrumentLabel = Label)
     }
     data.in
@@ -164,7 +168,7 @@ server <- function(input, output, session) {
     data.in
   })
   
-  # Render new calibration data from input csv's and existing calibration data from the database as datatables
+  # Display imported calibration data
   output$SpCond.in <- renderDT({
     if (nrow(SpCond.uploads()) > 0) {
       SpCond.uploads() %>%
@@ -182,9 +186,9 @@ server <- function(input, output, session) {
       if (length(input$SpCond.in_rows_selected) == 1) {
         updateDateInput(session = session, inputId = "SpCond.date.edit", value = SpCond.uploads()$CalibrationDate[input$SpCond.in_rows_selected])
         updateTextInput(session = session, inputId = "SpCond.time.edit", value = SpCond.uploads()$CalibrationTime[input$SpCond.in_rows_selected])
-        updateTextInput(session = session, inputId = "SpCond.std.edit", value = SpCond.uploads()$StandardValue_microS_per_cm[input$SpCond.in_rows_selected])
-        updateTextInput(session = session, inputId = "SpCond.precal.edit", value = SpCond.uploads()$PreCalibrationReading_microS_per_cm[input$SpCond.in_rows_selected])
-        updateTextInput(session = session, inputId = "SpCond.postcal.edit", value = SpCond.uploads()$PostCalibrationReading_microS_per_cm[input$SpCond.in_rows_selected])
+        updateNumericInput(session = session, inputId = "SpCond.std.edit", value = SpCond.uploads()$StandardValue_microS_per_cm[input$SpCond.in_rows_selected])
+        updateNumericInput(session = session, inputId = "SpCond.precal.edit", value = SpCond.uploads()$PreCalibrationReading_microS_per_cm[input$SpCond.in_rows_selected])
+        updateNumericInput(session = session, inputId = "SpCond.postcal.edit", value = SpCond.uploads()$PostCalibrationReading_microS_per_cm[input$SpCond.in_rows_selected])
         updateSelectInput(session = session, inputId = "SpCond.instr.edit", selected = SpCond.uploads()$SpCondInstrumentID[input$SpCond.in_rows_selected])
         updateTextAreaInput(session = session, inputId = "SpCond.notes.edit", value = SpCond.uploads()$Notes[input$SpCond.in_rows_selected])
         
@@ -192,9 +196,9 @@ server <- function(input, output, session) {
       } else {
         updateDateInput(session = session, inputId = "SpCond.date.edit", value = NA)
         updateTextInput(session = session, inputId = "SpCond.time.edit", value = "")
-        updateTextInput(session = session, inputId = "SpCond.std.edit", value = "")
-        updateTextInput(session = session, inputId = "SpCond.precal.edit", value = "")
-        updateTextInput(session = session, inputId = "SpCond.postcal.edit", value = "")
+        updateNumericInput(session = session, inputId = "SpCond.std.edit", value = NA)
+        updateNumericInput(session = session, inputId = "SpCond.precal.edit", value = NA)
+        updateNumericInput(session = session, inputId = "SpCond.postcal.edit", value = NA)
         updateSelectInput(session = session, inputId = "SpCond.instr.edit", selected = "")
         updateTextAreaInput(session = session, inputId = "SpCond.notes.edit", value = "")
       }
