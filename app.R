@@ -83,7 +83,13 @@ ui <- fluidPage(
                   tabPanel("SpCond",
                            h3("Uploaded data"),
                            dataTableOutput("SpCond.in"),
-                           textInput("SpCond.date.edit", "Calibration date")
+                           textInput("SpCond.date.edit", "Calibration date"),
+                           textInput("SpCond.time.edit", "Calibration time"),
+                           textInput("SpCond.std.edit", "Standard (µS/cm)"),
+                           textInput("SpCond.precal.edit", "Pre-cal reading (µS/cm)"),
+                           textInput("SpCond.postcal.edit", "Post-cal reading (µS/cm)"),
+                           textInput("SpCond.instr.edit", "SpCond instrument"),
+                           textAreaInput("SpCond.notes.edit", "Notes")
                   ),
                   tabPanel("DO",
                            h3("Uploaded data"),
@@ -158,10 +164,24 @@ server <- function(input, output, session) {
     isolate({
       # If a row is selected, populate input boxes with values from that row
       if (length(input$SpCond.in_rows_selected) == 1) {
+        # TODO: Use the appropriate input type for each data type instead of using text boxes for everything
         updateTextInput(session = session, inputId = "SpCond.date.edit", value = SpCond.uploads()$CalibrationDate[input$SpCond.in_rows_selected])
-        # If no rows are selected, clear input boxes
+        updateTextInput(session = session, inputId = "SpCond.time.edit", value = SpCond.uploads()$CalibrationTime[input$SpCond.in_rows_selected])
+        updateTextInput(session = session, inputId = "SpCond.std.edit", value = SpCond.uploads()$StandardValue_microS_per_cm[input$SpCond.in_rows_selected])
+        updateTextInput(session = session, inputId = "SpCond.precal.edit", value = SpCond.uploads()$PreCalibrationReading_microS_per_cm[input$SpCond.in_rows_selected])
+        updateTextInput(session = session, inputId = "SpCond.postcal.edit", value = SpCond.uploads()$PostCalibrationReading_microS_per_cm[input$SpCond.in_rows_selected])
+        updateTextInput(session = session, inputId = "SpCond.instr.edit", value = SpCond.uploads()$SpCondInstrumentID[input$SpCond.in_rows_selected])
+        updateTextInput(session = session, inputId = "SpCond.notes.edit", value = SpCond.uploads()$Notes[input$SpCond.in_rows_selected])
+        
+      # If no rows are selected, clear input boxes
       } else {
         updateTextInput(session = session, inputId = "SpCond.date.edit", value = "")
+        updateTextInput(session = session, inputId = "SpCond.time.edit", value = "")
+        updateTextInput(session = session, inputId = "SpCond.std.edit", value = "")
+        updateTextInput(session = session, inputId = "SpCond.precal.edit", value = "")
+        updateTextInput(session = session, inputId = "SpCond.postcal.edit", value = "")
+        updateTextInput(session = session, inputId = "SpCond.instr.edit", value = "")
+        updateTextInput(session = session, inputId = "SpCond.notes.edit", value = "")
       }
     })
   })
