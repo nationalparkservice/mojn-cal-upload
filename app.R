@@ -24,6 +24,9 @@ db.pH <- tbl(pool, in_schema("data", "CalibrationpH"))
 db.ref.wqinstr <- tbl(pool, in_schema("ref", "WaterQualityInstrument"))
 dropdown.wqinstr <- arrange(db.ref.wqinstr, desc(IsActive), Model) %>% collect()
 dropdown.wqinstr <- setNames(dropdown.wqinstr$ID, dropdown.wqinstr$Label)
+
+SpCond.uploads <- reactiveVal(tibble())
+
 # Functions
 readFiles <- function (file.paths, file.names, search.string = "*", col.types = NULL) {
   # Given a list of .csv file paths and file names, reads data into a data frame from files whose name matches the search string.
@@ -117,7 +120,7 @@ server <- function(input, output, session) {
   
   # Get new specific conductance calibration data from uploaded files
   # TODO: Omit data that is already in the database
-  SpCond.uploads <- reactive({
+  SpCond.uploads <- observeEvent(input$files.in, {
     data.in <- readFiles(input$files.in$datapath,
                          input$files.in$name,
                          "*_CalibrationSpCond.csv",
@@ -135,10 +138,10 @@ server <- function(input, output, session) {
         mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S"),
                CalibrationDate = as.Date(CalibrationDate, format = "%m/%d/%Y")) %>%  # Format dates and times so they display properly
         left_join(db.ref.wqinstr, by = c("SpCondInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
-        select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -SpCondInstrumentGUID) %>%  # Get rid of unnecessary columns
-        rename(SpCondInstrumentID = ID, SpCondInstrumentLabel = Label)
+        select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -SpCondInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
+        rename(SpCondInstrumentID = ID)
     }
-    data.in
+    SpCond.uploads(data.in)
   })
   
   # Get new dissolved oxygen calibration data from uploaded files
@@ -169,11 +172,17 @@ server <- function(input, output, session) {
   })
   
   # Display imported calibration data
+  SpCond.dt.proxy <- dataTableProxy("SpCond.in")
+  
   output$SpCond.in <- renderDT({
+    input$SpCond.save
+    input$SpCond.delete
     if (nrow(SpCond.uploads()) > 0) {
       SpCond.uploads() %>%
-        select(SpCondInstrumentLabel, CalibrationDate, CalibrationTime, PreCalibrationReading_microS_per_cm, PostCalibrationReading_microS_per_cm) %>%
-        singleSelectDT(col.names = c('Instrument', 'Date', 'Time', 'Pre (µS/cm)', 'Post (µS/cm)'))
+        left_join(db.ref.wqinstr, by = c("SpCondInstrumentID" = "ID"), copy = TRUE) %>%  # Join to WQ instrument table
+        rename(SpCondInstrumentLabel = Label) %>%
+        select(SpCondInstrumentLabel, CalibrationDate, CalibrationTime, StandardValue_microS_per_cm, PreCalibrationReading_microS_per_cm, PostCalibrationReading_microS_per_cm) %>%
+        singleSelectDT(col.names = c('Instrument', 'Date', 'Time', 'Standard (µS/cm)', 'Pre (µS/cm)', 'Post (µS/cm)'))
     }
   })
   
@@ -203,6 +212,72 @@ server <- function(input, output, session) {
         updateTextAreaInput(session = session, inputId = "SpCond.notes.edit", value = "")
       }
     })
+  })
+  
+  # Save changes to SpCond data
+  observeEvent(input$SpCond.save, {
+    # Save the row number that was selected
+    selected.row <- input$SpCond.in_rows_selected
+    
+    # Get the new values from the input boxes and coerce them to the correct data types
+    new.data <- tibble(CalibrationDate =  input$SpCond.date.edit,
+                       CalibrationTime = input$SpCond.time.edit,
+                       StandardValue_microS_per_cm = as.numeric(input$SpCond.std.edit),
+                       PreCalibrationReading_microS_per_cm = as.numeric(input$SpCond.precal.edit),
+                       PostCalibrationReading_microS_per_cm = as.numeric(input$SpCond.postcal.edit),
+                       SpCondInstrumentID = as.integer(input$SpCond.instr.edit),
+                       Notes = input$SpCond.notes.edit)
+    
+    #Assign the new values to the SpCond data frame
+    new.SpCond <- SpCond.uploads()
+    new.SpCond[input$SpCond.in_rows_selected,
+               c("CalibrationDate", "CalibrationTime",
+                 "StandardValue_microS_per_cm", "PreCalibrationReading_microS_per_cm", "PostCalibrationReading_microS_per_cm",
+                 "SpCondInstrumentID", "Notes")] <- new.data[1, ]
+    SpCond.uploads(new.SpCond)
+    
+    # Re-select the row that was selected
+    SpCond.dt.proxy %>% selectRows(selected.row)
+  })
+  
+  # Cancel changes to SpCond data
+  observeEvent(input$SpCond.cancel, {
+    SpCond.dt.proxy %>% selectRows(NULL)
+  })
+  
+  # Delete a row of SpCond data
+  
+  observeEvent(input$SpCond.delete, {
+    # If no rows are selected, don't do anything
+    if (!is.null(input$SpCond.in_rows_selected)) {
+      # Save the row number that was selected
+      selected.row <- input$SpCond.in_rows_selected
+      # Prompt user to confirm deletion
+      showModal({
+        modalDialog(
+          h3("Confirm deletion"),
+          p("Are you sure that you want to delete the selected row of data?"),
+          footer = tagList(
+            modalButton("Cancel"),
+            actionButton("SpCond.conf.delete", "Delete")
+          ),
+          easyClose = FALSE,
+          size = "m"
+        )
+      })
+      # Re-select the row that was selected for deletion (the modal dialog will otherwise clear row selections)
+      SpCond.dt.proxy %>% selectRows(selected.row)
+    }
+    
+  })
+  
+  observeEvent(input$SpCond.conf.delete, {
+    # Delete the selected row
+    new.SpCond <- SpCond.uploads()
+    new.SpCond <- new.SpCond[-input$SpCond.in_rows_selected, ]
+    SpCond.uploads(new.SpCond)
+    
+    removeModal()
   })
   
   output$DO.in <- renderDT(singleSelectDT(DO.uploads()))
