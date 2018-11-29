@@ -27,30 +27,6 @@ dropdown.wqinstr <- setNames(dropdown.wqinstr$ID, dropdown.wqinstr$Label)
 
 SpCond.uploads <- reactiveVal(tibble())
 
-# Functions
-readFiles <- function (file.paths, file.names, search.string = "*", col.types = NULL) {
-  # Given a list of .csv file paths and file names, reads data into a data frame from files whose name matches the search string.
-  #
-  # Args:
-  #   file.paths: A list of paths to the files to be read
-  #   file.names: A list of the original filenames (if using R Shiny file input, this is not the same as file.paths!)
-  #   search.string: Regular expression specifying which files in file.names should be read
-  #   col.types: Column specification
-  # Returns:
-  #   A dataframe containing the data read from the input files. Note that duplicate rows will be removed.
-  
-  file.paths <- file.paths[grepl(search.string, file.names)]
-  
-  if (length(file.paths > 0)) {
-    data.in <- bind_rows(lapply(file.paths, read_csv, col_types = col.types))
-    data.in <- unique(data.in)  # Get rid of any duplicate rows of data
-  } else {
-    data.in <- data.frame()
-  }
-  
-  return(data.in)
-}
-
 singleSelectDT <- function (data, col.names) {
   # Creates a DT datatable with single-row selection enabled
   #
@@ -76,9 +52,7 @@ ui <- fluidPage(
   # Sidebar with input for uploading .csv files 
   sidebarLayout(
     sidebarPanel(width = 2,
-                 fileInput("files.in", "Select data files to upload",
-                           multiple = TRUE,
-                           accept = ".csv")
+                 # File input module here
     ),
     
     # Show the incoming calibration data
