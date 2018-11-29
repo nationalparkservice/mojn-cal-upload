@@ -35,7 +35,7 @@ readFiles <- function (file.paths, file.names, search.string = "*", col.types = 
   #   file.paths: A list of paths to the files to be read
   #   file.names: A list of the original filenames (if using R Shiny file input, this is not the same as file.paths!)
   #   search.string: Regular expression specifying which files in file.names should be read
-  #
+  #   col.types: Column specification
   # Returns:
   #   A dataframe containing the data read from the input files. Note that duplicate rows will be removed.
   
