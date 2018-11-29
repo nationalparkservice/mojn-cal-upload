@@ -51,7 +51,7 @@ ui <- fluidPage(
   
   # Sidebar with input for uploading .csv files 
   sidebarLayout(
-    sidebarPanel(width = 2,
+    sidebarPanel(width = 2
                  # File input module here
     ),
     
@@ -119,31 +119,10 @@ server <- function(input, output, session) {
   })
   
   # Get new dissolved oxygen calibration data from uploaded files
-  DO.uploads <- reactive({
-    data.in <- readFiles(input$files.in$datapath, input$files.in$name, "*_CalibrationDO.csv")
-    if (nrow(data.in > 0)) {
-      # Clean up incoming data and filter out rows that are already in the database and haven't been modified
-      data.in <- data.in %>% 
-        mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S")) %>%  # Format times so they display properly
-        left_join(db.ref.wqinstr, by = c("DOInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
-        select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive) %>%  # Get rid of unnecessary columns
-        rename(DOInstrumentID = ID, DOInstrumentLabel = Label)
-    }
-    data.in
-  })
+
   
   # Get new pH calibration data from uploaded files
-  pH.uploads <- reactive({
-    data.in <- readFiles(input$files.in$datapath, input$files.in$name, "*_CalibrationpH.csv")
-    if (nrow(data.in > 0)) {
-      data.in <- data.in %>%
-        mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S")) %>%  # Format times so they display properly
-        left_join(db.ref.wqinstr, by = c("pHInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
-        select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive) %>%  # Get rid of unnecessary columns
-        rename(pHInstrumentID = ID, pHInstrumentLabel = Label)
-    }
-    data.in
-  })
+
   
   # Display imported calibration data
   SpCond.dt.proxy <- dataTableProxy("SpCond.in")
