@@ -39,7 +39,7 @@ fileImportInput <- function(id) {
 
   ns <- NS(id)
   
-  fileInput("files.in", "Select data files to upload",
+  fileInput(ns("files.in"), "Select data files to upload",
             multiple = TRUE,
             accept = ".csv")
   
@@ -57,35 +57,34 @@ fileImport <- function(input, output, session, table.spec) {
   #                 data.manip: Function to manipulate the data. Must take the data table as its first argument.
   #
   # Returns:
-  #   A reactiveValues object containing the data read from the input files. Note that duplicate rows will be removed.
+  #   A list containing the data read from the input files. Note that duplicate rows will be removed.
   
-  # Initialize reactiveValues object
-  data.imports <- reactiveValues()
+  data <- list()
+  
+  # Get list of imported files
+  data.files <- reactive({
+    # Do nothing if no files present
+    validate(need(input$files.in, message = "Files needed"))
+    input$files.in
+  })
   
   # When new files are uploaded, populate data.imports
-  observeEvent(input$files.in, {
-    data.in <- readFiles(input$files.in$datapath,
-                         input$files.in$name,
-                         "*_CalibrationSpCond.csv",
-                         col.types = cols(CalibrationDate = col_character(),
-                                          CalibrationTime = col_time(),
-                                          StandardValue_microS_per_cm = col_double(),
-                                          PreCalibrationReading_microS_per_cm = col_double(),
-                                          PostCalibrationReading_microS_per_cm = col_double(),
-                                          SpCondInstrumentGUID = col_character(),
-                                          Notes = col_character(),
-                                          GUID = col_character(),
-                                          DateCreated = col_character()))
-    if (nrow(data.in > 0)) {
-      data.in <- data.in %>%
-        mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S"),
-               CalibrationDate = as.Date(CalibrationDate, format = "%m/%d/%Y")) %>%  # Format dates and times so they display properly
-        left_join(db.ref.wqinstr, by = c("SpCondInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
-        select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -SpCondInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
-        rename(SpCondInstrumentID = ID)
+  data.imports <- eventReactive(data.files(), {
+    for (tbl in table.spec) {
+      data.in <- readFiles(data.files()$datapath,
+                         data.files()$name,
+                         tbl$search.string,
+                         col.types = tbl$col.types)
+      if (nrow(data.in > 0)) {
+        data.in <- data.in %>% 
+          unique()
+      }
+      data[[tbl$table.name]] <- data.in
     }
-    SpCond.uploads(data.in)
+    data
   })
+  
+  return(data.imports)
   
 }
 
