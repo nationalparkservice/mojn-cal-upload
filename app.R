@@ -5,6 +5,9 @@ library(tidyverse)
 library(pool)
 library(DT)
 
+source("modules.R")
+source("tableSpec.R")
+
 # DS.dsn <- 'driver={SQL Server Native Client 11.0};server=INPLAKE36792JNX\\SARAH_LOCAL;database=Testing_MOJN_DS_Water;trusted_connection=Yes;applicationintent=readonly'
 # Database connection
 pool <- dbPool(drv = odbc::odbc(),
@@ -51,8 +54,9 @@ ui <- fluidPage(
   
   # Sidebar with input for uploading .csv files 
   sidebarLayout(
-    sidebarPanel(width = 2
-                 # File input module here
+    sidebarPanel(width = 2,
+      # File input module
+      fileImportInput("import.data")
     ),
     
     # Show the incoming calibration data
@@ -94,29 +98,7 @@ server <- function(input, output, session) {
   
   # Get new specific conductance calibration data from uploaded files
   # TODO: Omit data that is already in the database
-  SpCond.uploads <- observeEvent(input$files.in, {
-    data.in <- readFiles(input$files.in$datapath,
-                         input$files.in$name,
-                         "*_CalibrationSpCond.csv",
-                         col.types = cols(CalibrationDate = col_character(),
-                                          CalibrationTime = col_time(),
-                                          StandardValue_microS_per_cm = col_double(),
-                                          PreCalibrationReading_microS_per_cm = col_double(),
-                                          PostCalibrationReading_microS_per_cm = col_double(),
-                                          SpCondInstrumentGUID = col_character(),
-                                          Notes = col_character(),
-                                          GUID = col_character(),
-                                          DateCreated = col_character()))
-    if (nrow(data.in > 0)) {
-      data.in <- data.in %>%
-        mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S"),
-               CalibrationDate = as.Date(CalibrationDate, format = "%m/%d/%Y")) %>%  # Format dates and times so they display properly
-        left_join(db.ref.wqinstr, by = c("SpCondInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
-        select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -SpCondInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
-        rename(SpCondInstrumentID = ID)
-    }
-    SpCond.uploads(data.in)
-  })
+  calib.data <- callModule(fileImport, "import.data", calib.table.spec)
   
   # Get new dissolved oxygen calibration data from uploaded files
 
@@ -130,9 +112,14 @@ server <- function(input, output, session) {
   output$SpCond.in <- renderDT({
     input$SpCond.save
     input$SpCond.delete
-    if (nrow(SpCond.uploads()) > 0) {
-      SpCond.uploads() %>%
-        left_join(db.ref.wqinstr, by = c("SpCondInstrumentID" = "ID"), copy = TRUE) %>%  # Join to WQ instrument table
+    if (nrow(calib.data()$CalibrationSpCond) > 0) {
+      calib.data()$CalibrationSpCond %>%
+        mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S"),
+               CalibrationDate = as.Date(CalibrationDate, format = "%m/%d/%Y")) %>%  # Format dates and times so they display properly
+        left_join(db.ref.wqinstr, by = c("SpCondInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table by GUID
+        select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -SpCondInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
+        rename(SpCondInstrumentID = ID) %>%
+        left_join(db.ref.wqinstr, by = c("SpCondInstrumentID" = "ID"), copy = TRUE) %>%  # Join to WQ instrument table by ID
         rename(SpCondInstrumentLabel = Label) %>%
         select(SpCondInstrumentLabel, CalibrationDate, CalibrationTime, StandardValue_microS_per_cm, PreCalibrationReading_microS_per_cm, PostCalibrationReading_microS_per_cm) %>%
         singleSelectDT(col.names = c('Instrument', 'Date', 'Time', 'Standard (µS/cm)', 'Pre (µS/cm)', 'Post (µS/cm)'))
@@ -146,13 +133,13 @@ server <- function(input, output, session) {
     isolate({
       # If a row is selected, populate input boxes with values from that row
       if (length(input$SpCond.in_rows_selected) == 1) {
-        updateDateInput(session = session, inputId = "SpCond.date.edit", value = SpCond.uploads()$CalibrationDate[input$SpCond.in_rows_selected])
-        updateTextInput(session = session, inputId = "SpCond.time.edit", value = SpCond.uploads()$CalibrationTime[input$SpCond.in_rows_selected])
-        updateNumericInput(session = session, inputId = "SpCond.std.edit", value = SpCond.uploads()$StandardValue_microS_per_cm[input$SpCond.in_rows_selected])
-        updateNumericInput(session = session, inputId = "SpCond.precal.edit", value = SpCond.uploads()$PreCalibrationReading_microS_per_cm[input$SpCond.in_rows_selected])
-        updateNumericInput(session = session, inputId = "SpCond.postcal.edit", value = SpCond.uploads()$PostCalibrationReading_microS_per_cm[input$SpCond.in_rows_selected])
-        updateSelectInput(session = session, inputId = "SpCond.instr.edit", selected = SpCond.uploads()$SpCondInstrumentID[input$SpCond.in_rows_selected])
-        updateTextAreaInput(session = session, inputId = "SpCond.notes.edit", value = SpCond.uploads()$Notes[input$SpCond.in_rows_selected])
+        updateDateInput(session = session, inputId = "SpCond.date.edit", value = calib.data()$CalibrationSpCond$CalibrationDate[input$SpCond.in_rows_selected])
+        updateTextInput(session = session, inputId = "SpCond.time.edit", value = calib.data()$CalibrationSpCond$CalibrationTime[input$SpCond.in_rows_selected])
+        updateNumericInput(session = session, inputId = "SpCond.std.edit", value = calib.data()$CalibrationSpCond$StandardValue_microS_per_cm[input$SpCond.in_rows_selected])
+        updateNumericInput(session = session, inputId = "SpCond.precal.edit", value = calib.data()$CalibrationSpCond$PreCalibrationReading_microS_per_cm[input$SpCond.in_rows_selected])
+        updateNumericInput(session = session, inputId = "SpCond.postcal.edit", value = calib.data()$CalibrationSpCond$PostCalibrationReading_microS_per_cm[input$SpCond.in_rows_selected])
+        updateSelectInput(session = session, inputId = "SpCond.instr.edit", selected = calib.data()$CalibrationSpCond$SpCondInstrumentID[input$SpCond.in_rows_selected])
+        updateTextAreaInput(session = session, inputId = "SpCond.notes.edit", value = calib.data()$CalibrationSpCond$Notes[input$SpCond.in_rows_selected])
         
       # If no rows are selected, clear input boxes
       } else {
@@ -233,8 +220,8 @@ server <- function(input, output, session) {
     removeModal()
   })
   
-  output$DO.in <- renderDT(singleSelectDT(DO.uploads()))
-  output$pH.in <- renderDT(singleSelectDT(pH.uploads()))
+  output$DO.in <- renderDT(singleSelectDT(calib.data()$CalibrationDO))
+  output$pH.in <- renderDT(singleSelectDT(calib.data()$CalibrationpH))
 }
 
 # Run the application 
