@@ -89,9 +89,55 @@ fileImport <- function(input, output, session, table.spec) {
 }
 
 
+# Data view and edit module UI
+dataViewAndEditUI <- function(id) {
+  # UI module for viewing data in a dataframe and selecting/editing rows.
+  #
+  # Args:
+  #   id: The namespace for the module
 
+  ns <- NS(id)
+  
+  tagList(
+    h3("Uploaded data"),
+    dataTableOutput("data.view"),  # Data table UI for viewing data and selecting a row
+    uiOutput("data.edit")  # Dynamically generated edit boxes will go here
+  )
+  
+}
 
-
-
-
-
+# Data view and edit module server function
+dataViewAndEdit <- function(input, output, session, col.spec, data.manip, ...) {
+  # File import module that reads csv data files into dataframes in a reactiveValues object.
+  #
+  # Args:
+  #   input, output, session: required parameters for Shiny server function.
+  #   data: The data table to be viewed/edited.
+  #   col.spec: A list of columns, each a list containing the following:
+  #                 label: A readable, concise name that will be used to label table columns and edit boxes.
+  #                 view: Boolean value indicating whether to show the column in the table.
+  #                 edit: Boolean value indicating whether to show the column as an edit box when a row in the table is selected.
+  #                 type: One of "select", "text", "notes", "numeric", "time", or "date", indicating what kind of input box to use.
+  #                 lookup: For foreign key columns, a data table to use as a lookup table.
+  #                 lookup.pk: If lookup table specified, the name of the primary key column of the lookup.
+  #                 lookup.text: If lookup table specified, the name of the column in the lookup table that contains meaningful codes or labels.
+  #    data.manip: Data manipulation function to be run prior to loading data into the table. Should take data as its first argument.
+  #    ...: Additional arguments to data.manip
+  #
+  # Returns:
+  #   A dataframe of reviewed data
+  
+  # Get list of columns to include in table
+  
+  # Get list of columns to include in edit boxes
+  
+  # Get list of fk columns
+  
+  # Data pre-processing
+  data.to.review <- do.call(data.manip, c(data, list(...)))
+  
+  # Populate table
+  
+  # Display edit boxes
+  
+}
