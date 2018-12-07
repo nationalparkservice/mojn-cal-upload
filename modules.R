@@ -75,10 +75,6 @@ fileImport <- function(input, output, session, table.spec) {
                          data.files()$name,
                          tbl$search.string,
                          col.types = tbl$col.types)
-      if (nrow(data.in > 0)) {
-        data.in <- data.in %>% 
-          unique()
-      }
       data[[tbl$table.name]] <- data.in
     }
     data
