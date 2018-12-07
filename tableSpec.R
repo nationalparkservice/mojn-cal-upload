@@ -1,4 +1,62 @@
 library(tidyverse)
+library(pool)
+
+# Database connection
+pool <- dbPool(drv = odbc::odbc(),
+               Driver = "SQL Server Native Client 11.0",
+               Server = "INPLAKE36792JNX\\SARAH_LOCAL",
+               Database = "MOJN_SharedTables",
+               Trusted_Connection = "Yes")
+
+onStop(function() {
+  poolClose(pool)
+})
+
+# Load table pointers to calibration data and refs:
+db.SpCond <- tbl(pool, in_schema("data", "CalibrationSpCond"))
+db.DO <- tbl(pool, in_schema("data", "CalibrationDO"))
+db.pH <- tbl(pool, in_schema("data", "CalibrationpH"))
+db.ref.wqinstr <- tbl(pool, in_schema("ref", "WaterQualityInstrument"))
+dropdown.wqinstr <- arrange(db.ref.wqinstr, desc(IsActive), Model) %>% collect()
+dropdown.wqinstr <- setNames(dropdown.wqinstr$ID, dropdown.wqinstr$Label)
+
+
+SpCond.col.spec <- list(CalibrationDate = list(label = "Date",
+                                               view = TRUE,
+                                               edit = TRUE,
+                                               type = "date"),
+                        CalibrationTime = list(label = "Time",
+                                               view = TRUE,
+                                               edit = TRUE,
+                                               type = "text"),
+                        StandardValue_microS_per_cm = list(label = "Standard (\u03bcS/cm)",
+                                                           view = TRUE,
+                                                           edit = TRUE,
+                                                       type = "numeric"),
+                        PreCalibrationReading_microS_per_cm = list(label = 'Pre-cal (\u03bcS/cm)',
+                                                           view = TRUE,
+                                                           edit = TRUE,
+                                                           type = "numeric"),
+                        PostCalibrationReading_microS_per_cm = list(label = "Post-cal (\u03bcS/cm)",
+                                                                   view = TRUE,
+                                                                   edit = TRUE,
+                                                                   type = "numeric"),
+                        SpCondInstrumentID = list(label = "Instrument",
+                                                  view = TRUE,
+                                                  edit = TRUE,
+                                                  type = "select",
+                                                  lookup = db.ref.wqinstr %>% collect(),
+                                                  lookup.pk = "ID",
+                                                  lookup.text = "Label"),
+                        Notes = list(label = "Notes",
+                                     view = TRUE,
+                                     edit = TRUE,
+                                     type = "notes"),
+                        DateCreated = list(label = "Date Created",
+                                           view = TRUE,
+                                           edit = FALSE,
+                                           type = "date")
+                        )
 
 # Calibration table spec
 calib.table.spec <- list(CalibrationSpCond = list(table.name = "CalibrationSpCond",
