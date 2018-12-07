@@ -30,21 +30,6 @@ dropdown.wqinstr <- setNames(dropdown.wqinstr$ID, dropdown.wqinstr$Label)
 
 SpCond.uploads <- reactiveVal(tibble())
 
-singleSelectDT <- function (data, col.names) {
-  # Creates a DT datatable with single-row selection enabled
-  #
-  # Args:
-  #   data: A dataframe
-  #
-  # Returns:
-  #   A DT datatable with single-row selection enabled
-  
-  datatable(data, selection = list(
-    mode = "single",
-    target = "row"),
-    colnames = col.names
-  )
-}
 
 # Define UI for application that imports calibration data from .csv and uploads to database
 ui <- fluidPage(

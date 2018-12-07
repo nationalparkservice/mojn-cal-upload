@@ -29,6 +29,23 @@ readFiles <- function (file.paths, file.names, search.string = "*", col.types = 
   return(data.in)
 }
 
+singleSelectDT <- function (data, col.names) {
+  # Creates a DT datatable with single-row selection enabled
+  #
+  # Args:
+  #   data: A dataframe
+  #
+  # Returns:
+  #   A DT datatable with single-row selection enabled
+  
+  datatable(data, selection = list(
+    mode = "single",
+    target = "row"),
+    colnames = col.names
+  )
+}
+
+
 # CSV file import module UI
 # TODO: read from JSON
 fileImportInput <- function(id) {
@@ -44,6 +61,7 @@ fileImportInput <- function(id) {
             accept = ".csv")
   
 }
+
 
 # CSV file import module server function
 fileImport <- function(input, output, session, table.spec) {
