@@ -96,8 +96,12 @@ dataViewAndEditUI <- function(id) {
   
   tagList(
     h3("Uploaded data"),
-    dataTableOutput("data.view"),  # Data table UI for viewing data and selecting a row
-    uiOutput("data.edit")  # Dynamically generated edit boxes will go here
+    dataTableOutput(ns("data.view")),  # Data table UI for viewing data and selecting a row
+    h3("Edit data"),
+    uiOutput(ns("data.edit")),  # Dynamically generated edit boxes will go here
+    actionButton(ns("delete"), "Delete"),
+    actionButton(ns("cancel"), "Cancel"),
+    actionButton(ns("save"), "Save")
   )
   
 }
