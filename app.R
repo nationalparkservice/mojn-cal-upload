@@ -100,6 +100,15 @@ server <- function(input, output, session) {
   # TODO: Omit data that is already in the database
   calib.data <- callModule(fileImport, "import.data", calib.table.spec)
   
+  sp.cond <- reactive({
+    calib.data()$CalibrationSpCond %>%
+      mutate(CalibrationTime = format(CalibrationTime, "%H:%M"),
+             CalibrationDate = as.Date(CalibrationDate, format = "%m/%d/%Y")) %>%  # Format dates and times so they display properly
+      left_join(db.ref.wqinstr, by = c("SpCondInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table by GUID
+      select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -SpCondInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
+      rename(SpCondInstrumentID = ID)
+  })
+
   # Get new dissolved oxygen calibration data from uploaded files
 
   
@@ -109,22 +118,8 @@ server <- function(input, output, session) {
   # Display imported calibration data
   SpCond.dt.proxy <- dataTableProxy("SpCond.in")
   
-  output$SpCond.in <- renderDT({
-    input$SpCond.save
-    input$SpCond.delete
-    if (nrow(calib.data()$CalibrationSpCond) > 0) {
-      calib.data()$CalibrationSpCond %>%
-        mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S"),
-               CalibrationDate = as.Date(CalibrationDate, format = "%m/%d/%Y")) %>%  # Format dates and times so they display properly
-        left_join(db.ref.wqinstr, by = c("SpCondInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table by GUID
-        select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -SpCondInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
-        rename(SpCondInstrumentID = ID) %>%
-        left_join(db.ref.wqinstr, by = c("SpCondInstrumentID" = "ID"), copy = TRUE) %>%  # Join to WQ instrument table by ID
-        rename(SpCondInstrumentLabel = Label) %>%
-        select(SpCondInstrumentLabel, CalibrationDate, CalibrationTime, StandardValue_microS_per_cm, PreCalibrationReading_microS_per_cm, PostCalibrationReading_microS_per_cm) %>%
-        singleSelectDT(col.names = c('Instrument', 'Date', 'Time', 'Standard (µS/cm)', 'Pre (µS/cm)', 'Post (µS/cm)'))
-    }
-  })
+  # Data table
+  callModule(dataViewAndEdit, "SpCond", data = sp.cond(), col.spec = SpCond.col.spec)
   
   # Populate editable input boxes with values from the selected row
   observe({
