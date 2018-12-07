@@ -154,6 +154,30 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   table.cols[which(table.cols$name %in% fk.cols), "name"] <- paste0(table.cols$name[which(table.cols$name %in% fk.cols)], "_lookup")
   
   # Populate table
+  output$data.view <- renderDT({
+    input$save
+    input$delete
+
+    for (col in fk.cols) {
+      lookup.tbl <- col.spec[[col]]$lookup  # get lookup table
+      lookup.pk <- col.spec[[col]]$lookup.pk  # primary key of lookup table
+      lookup.text <- col.spec[[col]]$lookup.text  # column in lookup table to display
+      
+      # Join data table to lookup table
+      data.view <- data.in() %>%
+        left_join(lookup.tbl, by = setNames(lookup.pk, col))
+      
+      # 
+      data.view <- data.view %>%
+        setnames(old = lookup.text, new = paste0(col, "_lookup"))# %>%
+        #select(-lookup.text)
+    }
+
+    data.view %>%
+      select(table.cols$name) %>%
+      singleSelectDT(col.names = table.cols$label)
+
+  })
   
   # Display edit boxes
   
