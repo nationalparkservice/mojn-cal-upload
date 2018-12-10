@@ -4,6 +4,7 @@ library(dbplyr)
 library(tidyverse)
 library(pool)
 library(DT)
+library(data.table)
 
 source("modules.R")
 source("tableSpec.R")
