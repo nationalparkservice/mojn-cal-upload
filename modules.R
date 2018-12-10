@@ -160,7 +160,7 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
     }
     # Get list of columns to include in edit boxes
     if (col.spec[[col]]$edit) {
-      edit.cols <- bind_rows(edit.cols, c(name = col, label = col.spec[[col]]$label))
+      edit.cols <- bind_rows(edit.cols, c(name = col, label = col.spec[[col]]$label, type = col.spec[[col]]$type))
     }
     # Get list of fk columns
     if (!is_empty(col.spec[[col]]$lookup)) {
@@ -197,6 +197,45 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
 
   })
   
-  # Display edit boxes
+  makeEditBoxes <- function(edit.cols, col.spec) {
+  
+    edit.boxes <- vector(mode = "list", length = nrow(edit.cols))
+    
+    for (row in 1:nrow(edit.cols)) {
+      col <- edit.cols[row,]
+      names(edit.boxes)[row] <- col$name
+      
+      # Create edit box based on column type "select", "text", "notes", "numeric", "time", or "date"
+      if (col$type == "text") {
+        edit.boxes[col$name] <- list(textInput(col$name, col$label))
+      } else if (col$type == "numeric") {
+        edit.boxes[col$name] <- list(numericInput(col$name, col$label, value = NA))
+      } else if (col$type == "date") {
+        edit.boxes[col$name] <- list(dateInput(col$name, col$label, value = NA))
+      } else if (col$type == "time") {
+        edit.boxes[col$name] <- list(textInput(col$name, col$label))
+      } else if (col$type == "notes") {
+        edit.boxes[col$name] <- list(textAreaInput(col$name, col$label))
+      } else if (col$type == "select") {
+        lookup.tbl <- col.spec[[col$name]]$lookup  # get lookup table
+        lookup.pk <- col.spec[[col$name]]$lookup.pk  # primary key of lookup table
+        lookup.text <- col.spec[[col$name]]$lookup.text  # column in lookup table to display
+  
+        options <- setNames(lookup.tbl[[lookup.pk]], lookup.tbl[[lookup.text]])  # dropdown options with primary key as value
+  
+        edit.boxes[col$name] <- list(selectInput(col$name, col$label,
+                                choices = c("", options),
+                                selected = NA))
+      }
+    }
+    return(edit.boxes)
+  }
+
+  # Add edit boxes to UI
+  output$data.edit <- renderUI({
+    data.in()
+    edit.boxes <- makeEditBoxes(edit.cols, col.spec)
+    tagList(edit.boxes)
+  })
   
 }
