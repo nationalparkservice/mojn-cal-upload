@@ -10,23 +10,23 @@ source("tableSpec.R")
 
 # DS.dsn <- 'driver={SQL Server Native Client 11.0};server=INPLAKE36792JNX\\SARAH_LOCAL;database=Testing_MOJN_DS_Water;trusted_connection=Yes;applicationintent=readonly'
 # Database connection
-pool <- dbPool(drv = odbc::odbc(),
-               Driver = "SQL Server Native Client 11.0",
-               Server = "INPLAKE36792JNX\\SARAH_LOCAL",
-               Database = "MOJN_SharedTables",
-               Trusted_Connection = "Yes")
-
-onStop(function() {
-  poolClose(pool)
-})
-
-# Load table pointers to calibration data and refs:
-db.SpCond <- tbl(pool, in_schema("data", "CalibrationSpCond"))
-db.DO <- tbl(pool, in_schema("data", "CalibrationDO"))
-db.pH <- tbl(pool, in_schema("data", "CalibrationpH"))
-db.ref.wqinstr <- tbl(pool, in_schema("ref", "WaterQualityInstrument"))
-dropdown.wqinstr <- arrange(db.ref.wqinstr, desc(IsActive), Model) %>% collect()
-dropdown.wqinstr <- setNames(dropdown.wqinstr$ID, dropdown.wqinstr$Label)
+# pool <- dbPool(drv = odbc::odbc(),
+#                Driver = "SQL Server Native Client 11.0",
+#                Server = "INPLAKE36792JNX\\SARAH_LOCAL",
+#                Database = "MOJN_SharedTables",
+#                Trusted_Connection = "Yes")
+# 
+# onStop(function() {
+#   poolClose(pool)
+# })
+# 
+# # Load table pointers to calibration data and refs:
+# db.SpCond <- tbl(pool, in_schema("data", "CalibrationSpCond"))
+# db.DO <- tbl(pool, in_schema("data", "CalibrationDO"))
+# db.pH <- tbl(pool, in_schema("data", "CalibrationpH"))
+# db.ref.wqinstr <- tbl(pool, in_schema("ref", "WaterQualityInstrument"))
+# dropdown.wqinstr <- arrange(db.ref.wqinstr, desc(IsActive), Model) %>% collect()
+# dropdown.wqinstr <- setNames(dropdown.wqinstr$ID, dropdown.wqinstr$Label)
 
 SpCond.uploads <- reactiveVal(tibble())
 
@@ -201,8 +201,6 @@ server <- function(input, output, session) {
     removeModal()
   })
   
-  output$DO.in <- renderDT(singleSelectDT(calib.data()$CalibrationDO))
-  output$pH.in <- renderDT(singleSelectDT(calib.data()$CalibrationpH))
 }
 
 # Run the application 
