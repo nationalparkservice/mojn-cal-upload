@@ -5,7 +5,10 @@ library(tidyverse)
 library(pool)
 library(DT)
 
+#---------------------------------------
 # Functions
+#---------------------------------------
+
 readFiles <- function (file.paths, file.names, search.string = "*", col.types = NULL) {
   # Given a list of .csv file paths and file names, reads data into a data frame from files whose name matches the search string.
   #
@@ -45,6 +48,69 @@ singleSelectDT <- function (data, col.names) {
   )
 }
 
+makeEditBoxes <- function(edit.cols, col.spec) {
+  # Function that takes a list of columns and the column specification for a table and returns a list of UI input boxes based on column types
+  # and labeled with column names.
+  #
+  # Args:
+  #   edit.cols: A character vector of column names indicating which columns in col.spec should be used to generate input boxes.
+  #   col.spec: A list of columns, each a list containing the following:
+  #                 label: A readable, concise name that will be used to label table columns and edit boxes.
+  #                 view: Boolean value indicating whether to show the column in the table.
+  #                 edit: Boolean value indicating whether to show the column as an edit box when a row in the table is selected.
+  #                 type: One of "select", "text", "notes", "numeric", "time", or "date", indicating what kind of input box to use.
+  #                 lookup: For foreign key columns, a data table to use as a lookup table. Otherwise omit this argument.
+  #                 lookup.pk: If lookup table specified, the name of the primary key column of the lookup. Otherwise omit this argument.
+  #                 lookup.text: If lookup table specified, the name of the column in the lookup table that contains meaningful codes or labels. Otherwise omit this argument.
+  #
+  # Returns:
+  #   A tag list of UI input boxes.
+  
+  # Initialize edit box list.
+  edit.boxes <- vector(mode = "list", length = nrow(edit.cols))
+  
+  for (row in 1:nrow(edit.cols)) {
+    col <- edit.cols[row,]
+    names(edit.boxes)[row] <- col$name
+    
+    # Create edit box based on column type "select", "text", "notes", "numeric", "time", or "date"
+    if (col$type == "text") {
+      edit.boxes[col$name] <- list(textInput(col$name, col$label))
+    } else if (col$type == "numeric") {
+      edit.boxes[col$name] <- list(numericInput(col$name, col$label, value = NA))
+    } else if (col$type == "date") {
+      edit.boxes[col$name] <- list(dateInput(col$name, col$label, value = NA))
+    } else if (col$type == "time") {
+      edit.boxes[col$name] <- list(textInput(col$name, col$label))
+    } else if (col$type == "notes") {
+      edit.boxes[col$name] <- list(textAreaInput(col$name, col$label))
+    } else if (col$type == "select") {
+      lookup.tbl <- col.spec[[col$name]]$lookup  # get lookup table
+      lookup.pk <- col.spec[[col$name]]$lookup.pk  # primary key of lookup table
+      lookup.text <- col.spec[[col$name]]$lookup.text  # column in lookup table to display
+      
+      options <- setNames(lookup.tbl[[lookup.pk]], lookup.tbl[[lookup.text]])  # dropdown options with primary key as value
+      
+      edit.boxes[col$name] <- list(selectInput(col$name, col$label,
+                                               choices = c("", options),
+                                               selected = NA))
+    }
+  }
+  
+  # Convert edit boxes to tag list and add cancel/save/delete buttons
+  edit.boxes <- tagList(edit.boxes)
+  delete.button <- actionButton("delete", "Delete")
+  cancel.button <- actionButton("cancel", "Cancel")
+  save.button <- actionButton("save", "Save")
+  edit.boxes <- tagAppendChildren(edit.boxes, delete.button, cancel.button, save.button)
+  
+  return(edit.boxes)
+}
+
+
+#---------------------------------------
+# Modules
+#---------------------------------------
 
 # CSV file import module UI
 # TODO: read from JSON
@@ -116,10 +182,7 @@ dataViewAndEditUI <- function(id) {
     h3("Uploaded data"),
     dataTableOutput(ns("data.view")),  # Data table UI for viewing data and selecting a row
     h3("Edit data"),
-    uiOutput(ns("data.edit")),  # Dynamically generated edit boxes will go here
-    actionButton(ns("delete"), "Delete"),
-    actionButton(ns("cancel"), "Cancel"),
-    actionButton(ns("save"), "Save")
+    uiOutput(ns("data.edit"))  # Dynamically generated edit boxes will go here
   )
   
 }
@@ -197,45 +260,10 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
 
   })
   
-  makeEditBoxes <- function(edit.cols, col.spec) {
-  
-    edit.boxes <- vector(mode = "list", length = nrow(edit.cols))
-    
-    for (row in 1:nrow(edit.cols)) {
-      col <- edit.cols[row,]
-      names(edit.boxes)[row] <- col$name
-      
-      # Create edit box based on column type "select", "text", "notes", "numeric", "time", or "date"
-      if (col$type == "text") {
-        edit.boxes[col$name] <- list(textInput(col$name, col$label))
-      } else if (col$type == "numeric") {
-        edit.boxes[col$name] <- list(numericInput(col$name, col$label, value = NA))
-      } else if (col$type == "date") {
-        edit.boxes[col$name] <- list(dateInput(col$name, col$label, value = NA))
-      } else if (col$type == "time") {
-        edit.boxes[col$name] <- list(textInput(col$name, col$label))
-      } else if (col$type == "notes") {
-        edit.boxes[col$name] <- list(textAreaInput(col$name, col$label))
-      } else if (col$type == "select") {
-        lookup.tbl <- col.spec[[col$name]]$lookup  # get lookup table
-        lookup.pk <- col.spec[[col$name]]$lookup.pk  # primary key of lookup table
-        lookup.text <- col.spec[[col$name]]$lookup.text  # column in lookup table to display
-  
-        options <- setNames(lookup.tbl[[lookup.pk]], lookup.tbl[[lookup.text]])  # dropdown options with primary key as value
-  
-        edit.boxes[col$name] <- list(selectInput(col$name, col$label,
-                                choices = c("", options),
-                                selected = NA))
-      }
-    }
-    return(edit.boxes)
-  }
-
   # Add edit boxes to UI
   output$data.edit <- renderUI({
     data.in()
-    edit.boxes <- makeEditBoxes(edit.cols, col.spec)
-    tagList(edit.boxes)
+    makeEditBoxes(edit.cols, col.spec)
   })
   
 }

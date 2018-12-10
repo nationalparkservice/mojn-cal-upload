@@ -32,15 +32,15 @@ SpCond.col.spec <- list(CalibrationDate = list(label = "Date",
                         StandardValue_microS_per_cm = list(label = "Standard (\u03bcS/cm)",
                                                            view = TRUE,
                                                            edit = TRUE,
-                                                       type = "numeric"),
-                        PreCalibrationReading_microS_per_cm = list(label = 'Pre-cal (\u03bcS/cm)',
-                                                           view = TRUE,
-                                                           edit = TRUE,
                                                            type = "numeric"),
-                        PostCalibrationReading_microS_per_cm = list(label = "Post-cal (\u03bcS/cm)",
+                        PreCalibrationReading_microS_per_cm = list(label = 'Pre-cal (\u03bcS/cm)',
                                                                    view = TRUE,
                                                                    edit = TRUE,
                                                                    type = "numeric"),
+                        PostCalibrationReading_microS_per_cm = list(label = "Post-cal (\u03bcS/cm)",
+                                                                    view = TRUE,
+                                                                    edit = TRUE,
+                                                                    type = "numeric"),
                         SpCondInstrumentID = list(label = "Instrument",
                                                   view = TRUE,
                                                   edit = TRUE,
@@ -124,5 +124,6 @@ calib.table.spec <- list(CalibrationSpCond = list(table.name = "CalibrationSpCon
                                                   select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -pHInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
                                                   rename(pHInstrumentID = ID)
                                                 return(data)
-                                              }))
+                                              })
+                                              )
                          )
