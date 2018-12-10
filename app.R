@@ -48,7 +48,7 @@ ui <- fluidPage(
     mainPanel(
       tabsetPanel(type = "tabs",
                   tabPanel("SpCond",
-                           dataViewAndEditUI("SpCond"),
+                           dataViewAndEditUI("SpCond")
                            # h3("Uploaded data"),
                            # dataTableOutput("SpCond.in"),
                            # dateInput("SpCond.date.edit", "Calibration date",
