@@ -319,6 +319,26 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   
   dt.proxy <- dataTableProxy("data.view")
   
+  # Save changes to data
+  observeEvent(input$save, {
+    # Save the row number that was selected
+    selected.row <- input$data.view_rows_selected
+    
+    # Get the new values from the input boxes and coerce them to the correct data types
+    updated.row <- sapply(edit.cols$name, function(input.box){
+      return(input[[input.box]])
+    })
+    
+    #Assign the new values to the SpCond data frame
+    new.data <- data.in()
+    new.data[input$data.view_rows_selected,
+               edit.cols$name] <- updated.row[1, ]
+    data.in(new.data)
+    
+    # Re-select the row that was selected
+    dt.proxy %>% selectRows(selected.row)
+  })
+  
   # Cancel changes to SpCond data
   observeEvent(input$cancel, {
     dt.proxy %>% selectRows(NULL)

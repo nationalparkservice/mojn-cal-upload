@@ -93,31 +93,31 @@ server <- function(input, output, session) {
   # SpCond data table and edit boxes
   callModule(dataViewAndEdit, "SpCond", data = sp.cond(), col.spec = SpCond.col.spec)
   
-  # Save changes to SpCond data
-  observeEvent(input$SpCond.save, {
-    # Save the row number that was selected
-    selected.row <- input$SpCond.in_rows_selected
-    
-    # Get the new values from the input boxes and coerce them to the correct data types
-    new.data <- tibble(CalibrationDate =  input$SpCond.date.edit,
-                       CalibrationTime = input$SpCond.time.edit,
-                       StandardValue_microS_per_cm = as.numeric(input$SpCond.std.edit),
-                       PreCalibrationReading_microS_per_cm = as.numeric(input$SpCond.precal.edit),
-                       PostCalibrationReading_microS_per_cm = as.numeric(input$SpCond.postcal.edit),
-                       SpCondInstrumentID = as.integer(input$SpCond.instr.edit),
-                       Notes = input$SpCond.notes.edit)
-    
-    #Assign the new values to the SpCond data frame
-    new.SpCond <- SpCond.uploads()
-    new.SpCond[input$SpCond.in_rows_selected,
-               c("CalibrationDate", "CalibrationTime",
-                 "StandardValue_microS_per_cm", "PreCalibrationReading_microS_per_cm", "PostCalibrationReading_microS_per_cm",
-                 "SpCondInstrumentID", "Notes")] <- new.data[1, ]
-    SpCond.uploads(new.SpCond)
-    
-    # Re-select the row that was selected
-    SpCond.dt.proxy %>% selectRows(selected.row)
-  })
+  # # Save changes to SpCond data
+  # observeEvent(input$SpCond.save, {
+  #   # Save the row number that was selected
+  #   selected.row <- input$SpCond.in_rows_selected
+  #   
+  #   # Get the new values from the input boxes and coerce them to the correct data types
+  #   new.data <- tibble(CalibrationDate =  input$SpCond.date.edit,
+  #                      CalibrationTime = input$SpCond.time.edit,
+  #                      StandardValue_microS_per_cm = as.numeric(input$SpCond.std.edit),
+  #                      PreCalibrationReading_microS_per_cm = as.numeric(input$SpCond.precal.edit),
+  #                      PostCalibrationReading_microS_per_cm = as.numeric(input$SpCond.postcal.edit),
+  #                      SpCondInstrumentID = as.integer(input$SpCond.instr.edit),
+  #                      Notes = input$SpCond.notes.edit)
+  #   
+  #   #Assign the new values to the SpCond data frame
+  #   new.SpCond <- SpCond.uploads()
+  #   new.SpCond[input$SpCond.in_rows_selected,
+  #              c("CalibrationDate", "CalibrationTime",
+  #                "StandardValue_microS_per_cm", "PreCalibrationReading_microS_per_cm", "PostCalibrationReading_microS_per_cm",
+  #                "SpCondInstrumentID", "Notes")] <- new.data[1, ]
+  #   SpCond.uploads(new.SpCond)
+  #   
+  #   # Re-select the row that was selected
+  #   SpCond.dt.proxy %>% selectRows(selected.row)
+  # })
   
   # # Cancel changes to SpCond data
   # observeEvent(input$SpCond.cancel, {
