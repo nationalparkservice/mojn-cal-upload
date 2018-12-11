@@ -161,7 +161,7 @@ fileImportInput <- function(id) {
   #
   # Args:
   #   id: The namespace for the module
-
+  
   ns <- NS(id)
   
   fileInput(ns("files.in"), "Select data files to upload",
@@ -198,9 +198,9 @@ fileImport <- function(input, output, session, table.spec) {
   data.imports <- eventReactive(data.files(), {
     for (tbl in table.spec) {
       data.in <- readFiles(data.files()$datapath,
-                         data.files()$name,
-                         tbl$search.string,
-                         col.types = tbl$col.types)
+                           data.files()$name,
+                           tbl$search.string,
+                           col.types = tbl$col.types)
       data[[tbl$table.name]] <- data.in
     }
     data
@@ -217,7 +217,7 @@ dataViewAndEditUI <- function(id) {
   #
   # Args:
   #   id: The namespace for the module
-
+  
   ns <- NS(id)
   
   tagList(
@@ -247,7 +247,7 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   #
   # Returns:
   #   A dataframe of reviewed data
-
+  
   data.in <- reactiveVal(tibble())
   observe({
     # Do nothing if no data present
@@ -258,7 +258,7 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   table.cols <- tibble()
   edit.cols <- tibble()
   fk.cols <- c()
-
+  
   for (col in names(col.spec)) {
     # Get list of columns to include in table
     if (col.spec[[col]]$view) {
@@ -270,7 +270,7 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
     }
     # Get list of fk columns
     if (!is_empty(col.spec[[col]]$lookup)) {
-     fk.cols <- c(fk.cols, col)
+      fk.cols <- c(fk.cols, col)
     }
   }
   
@@ -332,7 +332,7 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
       for (input.name in edit.cols$name) {
         input.type <- edit.cols$type[edit.cols$name == input.name]
         value <- input[[input.name]]
-  
+        
         if (input.type == "numeric" | 
             (input.type == "select" & !is.na(as.numeric(value)))) {
           # If input is numeric or select with numeric pk, convert to numeric type
@@ -363,7 +363,7 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   observeEvent(input$cancel, {
     dt.proxy %>% selectRows(NULL)
   })
-
+  
   # Delete a row of SpCond data
   observeEvent(input$delete, {
     # If no rows are selected, don't do anything
@@ -386,15 +386,15 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
       # Re-select the row that was selected for deletion (the modal dialog will otherwise clear row selections)
       dt.proxy %>% selectRows(selected.row)
     }
-
+    
   })
-
+  
   observeEvent(input$conf.delete, {
     # Delete the selected row
     new.data <- data.in()
     new.data <- new.data[-input$data.view_rows_selected, ]
     data.in(new.data)
-
+    
     removeModal()
   })
   
