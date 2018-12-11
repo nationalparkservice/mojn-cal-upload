@@ -48,12 +48,13 @@ singleSelectDT <- function (data, col.names) {
   )
 }
 
-makeEditBoxes <- function(edit.cols, col.spec) {
+makeEditBoxes <- function(session, edit.cols, col.spec) {
   # Function that takes a list of columns and the column specification for a table and returns a list of UI input boxes based on column types
   # and labeled with column names.
   #
   # Args:
-  #   edit.cols: A character vector of column names indicating which columns in col.spec should be used to generate input boxes.
+  #   session: Shiny session.
+  #   edit.cols: A data frame of column names, labels, and types, indicating which columns in col.spec should be used to generate input boxes.
   #   col.spec: A list of columns, each a list containing the following:
   #                 label: A readable, concise name that will be used to label table columns and edit boxes.
   #                 view: Boolean value indicating whether to show the column in the table.
@@ -75,15 +76,15 @@ makeEditBoxes <- function(edit.cols, col.spec) {
     
     # Create edit box based on column type "select", "text", "notes", "numeric", "time", or "date"
     if (col$type == "text") {
-      edit.boxes[col$name] <- list(textInput(col$name, col$label))
+      edit.boxes[col$name] <- list(textInput(inputId = session$ns(col$name), label = col$label, value = ""))
     } else if (col$type == "numeric") {
-      edit.boxes[col$name] <- list(numericInput(col$name, col$label, value = NA))
+      edit.boxes[col$name] <- list(numericInput(inputId = session$ns(col$name), label = col$label, value = NA))
     } else if (col$type == "date") {
-      edit.boxes[col$name] <- list(dateInput(col$name, col$label, value = NA))
+      edit.boxes[col$name] <- list(dateInput(inputId = session$ns(col$name), label = col$label, value = NA))
     } else if (col$type == "time") {
-      edit.boxes[col$name] <- list(textInput(col$name, col$label))
+      edit.boxes[col$name] <- list(textInput(inputId = session$ns(col$name), label = col$label, value = ""))
     } else if (col$type == "notes") {
-      edit.boxes[col$name] <- list(textAreaInput(col$name, col$label))
+      edit.boxes[col$name] <- list(textAreaInput(inputId = session$ns(col$name), label = col$label, value = ""))
     } else if (col$type == "select") {
       lookup.tbl <- col.spec[[col$name]]$lookup  # get lookup table
       lookup.pk <- col.spec[[col$name]]$lookup.pk  # primary key of lookup table
@@ -91,7 +92,7 @@ makeEditBoxes <- function(edit.cols, col.spec) {
       
       options <- setNames(lookup.tbl[[lookup.pk]], lookup.tbl[[lookup.text]])  # dropdown options with primary key as value
       
-      edit.boxes[col$name] <- list(selectInput(col$name, col$label,
+      edit.boxes[col$name] <- list(selectInput(inputId = session$ns(col$name), label = col$label,
                                                choices = c("", options),
                                                selected = NA))
     }
@@ -105,6 +106,47 @@ makeEditBoxes <- function(edit.cols, col.spec) {
   edit.boxes <- tagAppendChildren(edit.boxes, delete.button, cancel.button, save.button)
   
   return(edit.boxes)
+}
+
+updateEditBoxes <- function(session, edit.cols, row.selected, data) {
+  # Updates edit boxes with data from a specified row in a reactive data frame. Clears boxes if no row specified.
+  #
+  # Args:
+  #   session: Shiny session.
+  #   edit.cols: A data frame of column names, labels, and types, indicating which columns of data correspond to edit boxes.
+  #   row.selected: An integer indicating the row of data with which to populate the edit boxes.
+  #   data: A reactive data frame.
+  # Returns:
+  #   A tag list of UI input boxes.
+  
+  for (row in 1:nrow(edit.cols)) {
+    
+    col <- edit.cols[row,]
+    
+    # If a row is selected, set the update value to that row of the current column. Otherwise, set it to "" or NA depending on the data type.
+    if (length(row.selected == 1)) {
+      update.value <- data[[row.selected, col$name]]
+    } else if (col$type %in% c("text", "time", "notes", "select")) {
+      update.value <- ""
+    } else {
+      update.value <- NA
+    }
+    
+    # Create edit box based on column type "select", "text", "notes", "numeric", "time", or "date"
+    if (col$type == "text") {
+      updateTextInput(session = session, inputId = col$name, value = update.value)
+    } else if (col$type == "numeric") {
+      updateNumericInput(session = session, inputId = col$name, value = update.value)
+    } else if (col$type == "date") {
+      updateDateInput(session = session, inputId = col$name, value = update.value)
+    } else if (col$type == "time") {
+      updateTextInput(session = session, inputId = col$name, value = update.value)
+    } else if (col$type == "notes") {
+      updateTextAreaInput(session = session, inputId = col$name, value = update.value)
+    } else if (col$type == "select") {
+      updateSelectInput(session = session, inputId = col$name, selected = update.value)
+    }
+  }
 }
 
 
@@ -263,7 +305,14 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   # Add edit boxes to UI
   output$data.edit <- renderUI({
     data.in()
-    makeEditBoxes(edit.cols, col.spec)
+    makeEditBoxes(session, edit.cols, col.spec)
+  })
+  
+  # Populate editable input boxes with values from the selected row
+  observe({
+    input$data.view_rows_selected
+    # TODO: Check if there are unsaved changes in the input boxes before deselecting a row or selecting a new row
+    updateEditBoxes(session, edit.cols, input$data.view_rows_selected, data.in())
   })
   
 }

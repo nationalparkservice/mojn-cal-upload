@@ -50,21 +50,6 @@ ui <- fluidPage(
       tabsetPanel(type = "tabs",
                   tabPanel("SpCond",
                            dataViewAndEditUI("SpCond")
-                           # h3("Uploaded data"),
-                           # dataTableOutput("SpCond.in"),
-                           # dateInput("SpCond.date.edit", "Calibration date",
-                           #           value = ""),
-                           # textInput("SpCond.time.edit", "Calibration time"),
-                           # numericInput("SpCond.std.edit", "Standard (µS/cm)", value = NA),
-                           # numericInput("SpCond.precal.edit", "Pre-cal reading (µS/cm)", value = NA),
-                           # numericInput("SpCond.postcal.edit", "Post-cal reading (µS/cm)", value = NA),
-                           # selectInput("SpCond.instr.edit", "SpCond instrument",
-                           #             choices = c("", dropdown.wqinstr),
-                           #             selected = NA),
-                           # textAreaInput("SpCond.notes.edit", "Notes"),
-                           # actionButton("SpCond.delete", "Delete"),
-                           # actionButton("SpCond.cancel", "Cancel"),
-                           # actionButton("SpCond.save", "Save")
                   ),
                   tabPanel("DO",
                            h3("Uploaded data"),
@@ -105,36 +90,8 @@ server <- function(input, output, session) {
   # Display imported calibration data
   SpCond.dt.proxy <- dataTableProxy("SpCond.in")
   
-  # Data table
+  # SpCond data table and edit boxes
   callModule(dataViewAndEdit, "SpCond", data = sp.cond(), col.spec = SpCond.col.spec)
-  
-  # Populate editable input boxes with values from the selected row
-  observe({
-    input$SpCond.in_rows_selected
-    # TODO: Check if there are unsaved changes in the input boxes before deselecting a row or selecting a new row
-    isolate({
-      # If a row is selected, populate input boxes with values from that row
-      if (length(input$SpCond.in_rows_selected) == 1) {
-        updateDateInput(session = session, inputId = "SpCond.date.edit", value = calib.data()$CalibrationSpCond$CalibrationDate[input$SpCond.in_rows_selected])
-        updateTextInput(session = session, inputId = "SpCond.time.edit", value = calib.data()$CalibrationSpCond$CalibrationTime[input$SpCond.in_rows_selected])
-        updateNumericInput(session = session, inputId = "SpCond.std.edit", value = calib.data()$CalibrationSpCond$StandardValue_microS_per_cm[input$SpCond.in_rows_selected])
-        updateNumericInput(session = session, inputId = "SpCond.precal.edit", value = calib.data()$CalibrationSpCond$PreCalibrationReading_microS_per_cm[input$SpCond.in_rows_selected])
-        updateNumericInput(session = session, inputId = "SpCond.postcal.edit", value = calib.data()$CalibrationSpCond$PostCalibrationReading_microS_per_cm[input$SpCond.in_rows_selected])
-        updateSelectInput(session = session, inputId = "SpCond.instr.edit", selected = calib.data()$CalibrationSpCond$SpCondInstrumentID[input$SpCond.in_rows_selected])
-        updateTextAreaInput(session = session, inputId = "SpCond.notes.edit", value = calib.data()$CalibrationSpCond$Notes[input$SpCond.in_rows_selected])
-        
-      # If no rows are selected, clear input boxes
-      } else {
-        updateDateInput(session = session, inputId = "SpCond.date.edit", value = NA)
-        updateTextInput(session = session, inputId = "SpCond.time.edit", value = "")
-        updateNumericInput(session = session, inputId = "SpCond.std.edit", value = NA)
-        updateNumericInput(session = session, inputId = "SpCond.precal.edit", value = NA)
-        updateNumericInput(session = session, inputId = "SpCond.postcal.edit", value = NA)
-        updateSelectInput(session = session, inputId = "SpCond.instr.edit", selected = "")
-        updateTextAreaInput(session = session, inputId = "SpCond.notes.edit", value = "")
-      }
-    })
-  })
   
   # Save changes to SpCond data
   observeEvent(input$SpCond.save, {
