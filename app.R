@@ -119,45 +119,45 @@ server <- function(input, output, session) {
     SpCond.dt.proxy %>% selectRows(selected.row)
   })
   
-  # Cancel changes to SpCond data
-  observeEvent(input$SpCond.cancel, {
-    SpCond.dt.proxy %>% selectRows(NULL)
-  })
+  # # Cancel changes to SpCond data
+  # observeEvent(input$SpCond.cancel, {
+  #   SpCond.dt.proxy %>% selectRows(NULL)
+  # })
   
   # Delete a row of SpCond data
   
-  observeEvent(input$SpCond.delete, {
-    # If no rows are selected, don't do anything
-    if (!is.null(input$SpCond.in_rows_selected)) {
-      # Save the row number that was selected
-      selected.row <- input$SpCond.in_rows_selected
-      # Prompt user to confirm deletion
-      showModal({
-        modalDialog(
-          h3("Confirm deletion"),
-          p("Are you sure that you want to delete the selected row of data?"),
-          footer = tagList(
-            modalButton("Cancel"),
-            actionButton("SpCond.conf.delete", "Delete")
-          ),
-          easyClose = FALSE,
-          size = "m"
-        )
-      })
-      # Re-select the row that was selected for deletion (the modal dialog will otherwise clear row selections)
-      SpCond.dt.proxy %>% selectRows(selected.row)
-    }
-    
-  })
-  
-  observeEvent(input$SpCond.conf.delete, {
-    # Delete the selected row
-    new.SpCond <- SpCond.uploads()
-    new.SpCond <- new.SpCond[-input$SpCond.in_rows_selected, ]
-    SpCond.uploads(new.SpCond)
-    
-    removeModal()
-  })
+  # observeEvent(input$SpCond.delete, {
+  #   # If no rows are selected, don't do anything
+  #   if (!is.null(input$SpCond.in_rows_selected)) {
+  #     # Save the row number that was selected
+  #     selected.row <- input$SpCond.in_rows_selected
+  #     # Prompt user to confirm deletion
+  #     showModal({
+  #       modalDialog(
+  #         h3("Confirm deletion"),
+  #         p("Are you sure that you want to delete the selected row of data?"),
+  #         footer = tagList(
+  #           modalButton("Cancel"),
+  #           actionButton("SpCond.conf.delete", "Delete")
+  #         ),
+  #         easyClose = FALSE,
+  #         size = "m"
+  #       )
+  #     })
+  #     # Re-select the row that was selected for deletion (the modal dialog will otherwise clear row selections)
+  #     SpCond.dt.proxy %>% selectRows(selected.row)
+  #   }
+  #   
+  # })
+  # 
+  # observeEvent(input$SpCond.conf.delete, {
+  #   # Delete the selected row
+  #   new.SpCond <- SpCond.uploads()
+  #   new.SpCond <- new.SpCond[-input$SpCond.in_rows_selected, ]
+  #   SpCond.uploads(new.SpCond)
+  #   
+  #   removeModal()
+  # })
   
 }
 

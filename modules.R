@@ -100,9 +100,9 @@ makeEditBoxes <- function(session, edit.cols, col.spec) {
   
   # Convert edit boxes to tag list and add cancel/save/delete buttons
   edit.boxes <- tagList(edit.boxes)
-  delete.button <- actionButton("delete", "Delete")
-  cancel.button <- actionButton("cancel", "Cancel")
-  save.button <- actionButton("save", "Save")
+  delete.button <- actionButton(session$ns("delete"), "Delete")
+  cancel.button <- actionButton(session$ns("cancel"), "Cancel")
+  save.button <- actionButton(session$ns("save"), "Save")
   edit.boxes <- tagAppendChildren(edit.boxes, delete.button, cancel.button, save.button)
   
   return(edit.boxes)
@@ -247,11 +247,12 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   #
   # Returns:
   #   A dataframe of reviewed data
+  data.in <- reactiveVal(tibble())
   
-  data.in <- reactive({
+  observe({
     # Do nothing if no data present
     validate(need(data, message = FALSE))
-    data
+    data.in(data)
   })
   
   table.cols <- tibble()
@@ -313,6 +314,48 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
     input$data.view_rows_selected
     # TODO: Check if there are unsaved changes in the input boxes before deselecting a row or selecting a new row
     updateEditBoxes(session, edit.cols, input$data.view_rows_selected, data.in())
+  })
+  
+  
+  dt.proxy <- dataTableProxy("data.view")
+  
+  # Cancel changes to SpCond data
+  observeEvent(input$cancel, {
+    dt.proxy %>% selectRows(NULL)
+  })
+
+  # Delete a row of SpCond data
+  observeEvent(input$delete, {
+    # If no rows are selected, don't do anything
+    if (!is.null(input$data.view_rows_selected)) {
+      # Save the row number that was selected
+      selected.row <- input$data.view_rows_selected
+      # Prompt user to confirm deletion
+      showModal({
+        modalDialog(
+          h3("Confirm deletion"),
+          p("Are you sure that you want to delete the selected row of data?"),
+          footer = tagList(
+            modalButton("Cancel"),
+            actionButton(session$ns("conf.delete"), "Delete")
+          ),
+          easyClose = FALSE,
+          size = "m"
+        )
+      })
+      # Re-select the row that was selected for deletion (the modal dialog will otherwise clear row selections)
+      dt.proxy %>% selectRows(selected.row)
+    }
+
+  })
+
+  observeEvent(input$conf.delete, {
+    # Delete the selected row
+    new.data <- data.in()
+    new.data <- new.data[-input$data.view_rows_selected, ]
+    data.in(new.data)
+
+    removeModal()
   })
   
 }
