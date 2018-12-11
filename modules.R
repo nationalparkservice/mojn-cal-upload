@@ -281,32 +281,39 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   output$data.view <- renderDT({
     input$save
     input$delete
-
-    for (col in fk.cols) {
-      lookup.tbl <- col.spec[[col]]$lookup  # get lookup table
-      lookup.pk <- col.spec[[col]]$lookup.pk  # primary key of lookup table
-      lookup.text <- col.spec[[col]]$lookup.text  # column in lookup table to display
-      
-      # Join data table to lookup table
-      data.view <- data.in() %>%
-        left_join(lookup.tbl, by = setNames(lookup.pk, col))
-      
-      # 
-      data.view <- data.view %>%
-        setnames(old = lookup.text, new = paste0(col, "_lookup"))# %>%
-        #select(-lookup.text)
+    data.in()
+    
+    # only show data table if there are data to display
+    if (nrow(data.in()) > 0) {
+      isolate({
+        for (col in fk.cols) {
+          lookup.tbl <- col.spec[[col]]$lookup  # get lookup table
+          lookup.pk <- col.spec[[col]]$lookup.pk  # primary key of lookup table
+          lookup.text <- col.spec[[col]]$lookup.text  # column in lookup table to display
+          
+          # Join data table to lookup table
+          data.view <- data.in() %>%
+            left_join(lookup.tbl, by = setNames(lookup.pk, col))
+          
+          # 
+          data.view <- data.view %>%
+            setnames(old = lookup.text, new = paste0(col, "_lookup"))# %>%
+          #select(-lookup.text)
+        }
+        
+        data.view %>%
+          select(table.cols$name) %>%
+          singleSelectDT(col.names = table.cols$label)
+      })
     }
-
-    data.view %>%
-      select(table.cols$name) %>%
-      singleSelectDT(col.names = table.cols$label)
-
   })
   
   # Add edit boxes to UI
   output$data.edit <- renderUI({
-    data.in()
-    makeEditBoxes(session, edit.cols, col.spec)
+    # only show edit boxes if data are present
+    if (nrow(data.in()) > 0) {
+      makeEditBoxes(session, edit.cols, col.spec)
+    }
   })
   
   # Populate editable input boxes with values from the selected row
