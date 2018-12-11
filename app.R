@@ -9,28 +9,6 @@ library(data.table)
 source("modules.R")
 source("tableSpec.R")
 
-# DS.dsn <- 'driver={SQL Server Native Client 11.0};server=INPLAKE36792JNX\\SARAH_LOCAL;database=Testing_MOJN_DS_Water;trusted_connection=Yes;applicationintent=readonly'
-# Database connection
-# pool <- dbPool(drv = odbc::odbc(),
-#                Driver = "SQL Server Native Client 11.0",
-#                Server = "INPLAKE36792JNX\\SARAH_LOCAL",
-#                Database = "MOJN_SharedTables",
-#                Trusted_Connection = "Yes")
-# 
-# onStop(function() {
-#   poolClose(pool)
-# })
-# 
-# # Load table pointers to calibration data and refs:
-# db.SpCond <- tbl(pool, in_schema("data", "CalibrationSpCond"))
-# db.DO <- tbl(pool, in_schema("data", "CalibrationDO"))
-# db.pH <- tbl(pool, in_schema("data", "CalibrationpH"))
-# db.ref.wqinstr <- tbl(pool, in_schema("ref", "WaterQualityInstrument"))
-# dropdown.wqinstr <- arrange(db.ref.wqinstr, desc(IsActive), Model) %>% collect()
-# dropdown.wqinstr <- setNames(dropdown.wqinstr$ID, dropdown.wqinstr$Label)
-
-SpCond.uploads <- reactiveVal(tibble())
-
 # Define UI for application that imports calibration data from .csv and uploads to database
 ui <- fluidPage(
   
@@ -59,7 +37,6 @@ ui <- fluidPage(
                            dataTableOutput("pH.in")
                   )
       )
-      
     )
   )
 )
@@ -68,7 +45,7 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   
   # Get new specific conductance calibration data from uploaded files
-  # TODO: Omit data that is already in the database
+  # TODO: Omit data that are already in the database
   calib.data <- callModule(fileImport, "import.data", calib.table.spec)
   
   sp.cond <- reactive({
@@ -84,80 +61,9 @@ server <- function(input, output, session) {
 
   
   # Get new pH calibration data from uploaded files
-
   
-  # Display imported calibration data
-  SpCond.dt.proxy <- dataTableProxy("SpCond.in")
-  
-  # SpCond data table and edit boxes
+  # Display SpCond data table and edit boxes
   callModule(dataViewAndEdit, "SpCond", data = sp.cond(), col.spec = SpCond.col.spec)
-  
-  # # Save changes to SpCond data
-  # observeEvent(input$SpCond.save, {
-  #   # Save the row number that was selected
-  #   selected.row <- input$SpCond.in_rows_selected
-  #   
-  #   # Get the new values from the input boxes and coerce them to the correct data types
-  #   new.data <- tibble(CalibrationDate =  input$SpCond.date.edit,
-  #                      CalibrationTime = input$SpCond.time.edit,
-  #                      StandardValue_microS_per_cm = as.numeric(input$SpCond.std.edit),
-  #                      PreCalibrationReading_microS_per_cm = as.numeric(input$SpCond.precal.edit),
-  #                      PostCalibrationReading_microS_per_cm = as.numeric(input$SpCond.postcal.edit),
-  #                      SpCondInstrumentID = as.integer(input$SpCond.instr.edit),
-  #                      Notes = input$SpCond.notes.edit)
-  #   
-  #   #Assign the new values to the SpCond data frame
-  #   new.SpCond <- SpCond.uploads()
-  #   new.SpCond[input$SpCond.in_rows_selected,
-  #              c("CalibrationDate", "CalibrationTime",
-  #                "StandardValue_microS_per_cm", "PreCalibrationReading_microS_per_cm", "PostCalibrationReading_microS_per_cm",
-  #                "SpCondInstrumentID", "Notes")] <- new.data[1, ]
-  #   SpCond.uploads(new.SpCond)
-  #   
-  #   # Re-select the row that was selected
-  #   SpCond.dt.proxy %>% selectRows(selected.row)
-  # })
-  
-  # # Cancel changes to SpCond data
-  # observeEvent(input$SpCond.cancel, {
-  #   SpCond.dt.proxy %>% selectRows(NULL)
-  # })
-  
-  # Delete a row of SpCond data
-  
-  # observeEvent(input$SpCond.delete, {
-  #   # If no rows are selected, don't do anything
-  #   if (!is.null(input$SpCond.in_rows_selected)) {
-  #     # Save the row number that was selected
-  #     selected.row <- input$SpCond.in_rows_selected
-  #     # Prompt user to confirm deletion
-  #     showModal({
-  #       modalDialog(
-  #         h3("Confirm deletion"),
-  #         p("Are you sure that you want to delete the selected row of data?"),
-  #         footer = tagList(
-  #           modalButton("Cancel"),
-  #           actionButton("SpCond.conf.delete", "Delete")
-  #         ),
-  #         easyClose = FALSE,
-  #         size = "m"
-  #       )
-  #     })
-  #     # Re-select the row that was selected for deletion (the modal dialog will otherwise clear row selections)
-  #     SpCond.dt.proxy %>% selectRows(selected.row)
-  #   }
-  #   
-  # })
-  # 
-  # observeEvent(input$SpCond.conf.delete, {
-  #   # Delete the selected row
-  #   new.SpCond <- SpCond.uploads()
-  #   new.SpCond <- new.SpCond[-input$SpCond.in_rows_selected, ]
-  #   SpCond.uploads(new.SpCond)
-  #   
-  #   removeModal()
-  # })
-  
 }
 
 # Run the application 
