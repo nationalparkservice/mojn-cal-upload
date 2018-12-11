@@ -247,8 +247,8 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   #
   # Returns:
   #   A dataframe of reviewed data
+
   data.in <- reactiveVal(tibble())
-  
   observe({
     # Do nothing if no data present
     validate(need(data, message = FALSE))
@@ -316,27 +316,47 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
     updateEditBoxes(session, edit.cols, input$data.view_rows_selected, data.in())
   })
   
-  
+  # Data table proxy for selecting rows
   dt.proxy <- dataTableProxy("data.view")
   
   # Save changes to data
+  # TODO: Figure out why row gets deselected when data are saved
   observeEvent(input$save, {
     # Save the row number that was selected
     selected.row <- input$data.view_rows_selected
     
-    # Get the new values from the input boxes and coerce them to the correct data types
-    updated.row <- sapply(edit.cols$name, function(input.box){
-      return(input[[input.box]])
-    })
-    
-    #Assign the new values to the SpCond data frame
-    new.data <- data.in()
-    new.data[input$data.view_rows_selected,
-               edit.cols$name] <- updated.row[1, ]
-    data.in(new.data)
-    
-    # Re-select the row that was selected
-    dt.proxy %>% selectRows(selected.row)
+    # Don't do anything if there isn't exactly one selected row
+    if (length(selected.row) == 1) {
+      # Get the new values from the input boxes and coerce them to the correct data types
+      updated.row <- data_frame()
+      for (input.name in edit.cols$name) {
+        input.type <- edit.cols$type[edit.cols$name == input.name]
+        value <- input[[input.name]]
+  
+        if (input.type == "numeric" | 
+            (input.type == "select" & !is.na(as.numeric(value)))) {
+          # If input is numeric or select with numeric pk, convert to numeric type
+          value <- as.numeric(value)
+        } else if (input.type == "date") {
+          value <- format(value)
+        }
+        
+        updated.row[1, input.name] <- value
+      }
+      
+      #Assign the new values to the SpCond data frame
+      new.data <- data.in()
+      if (any(new.data[input$data.view_rows_selected, edit.cols$name] != updated.row[1, ])) {
+        new.data[input$data.view_rows_selected, edit.cols$name] <- updated.row[1, ]
+        data.in(new.data)
+        showNotification("Data saved", type = "message")
+      } else {
+        showNotification("No changes to save", type = "warning") 
+      }
+      
+      # Re-select the row that was selected
+      dt.proxy %>% selectRows(selected.row)
+    }
   })
   
   # Cancel changes to SpCond data

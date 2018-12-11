@@ -31,7 +31,6 @@ source("tableSpec.R")
 
 SpCond.uploads <- reactiveVal(tibble())
 
-
 # Define UI for application that imports calibration data from .csv and uploads to database
 ui <- fluidPage(
   
