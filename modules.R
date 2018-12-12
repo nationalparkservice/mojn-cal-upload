@@ -248,11 +248,10 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   # Returns:
   #   A dataframe of reviewed data
   
-  data.in <- reactiveVal(tibble())
-  observe({
+  data.in <- reactiveVal({
     # Do nothing if no data present
     validate(need(data, message = FALSE))
-    data.in(data)
+    data
   })
   
   table.cols <- tibble()
@@ -285,7 +284,7 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
     
     # only show data table if there are data to display
     if (nrow(data.in()) > 0) {
-      isolate({
+
         for (col in fk.cols) {
           lookup.tbl <- col.spec[[col]]$lookup  # get lookup table
           lookup.pk <- col.spec[[col]]$lookup.pk  # primary key of lookup table
@@ -304,7 +303,7 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
         data.view %>%
           select(table.cols$name) %>%
           singleSelectDT(col.names = table.cols$label)
-      })
+
     }
   })
   

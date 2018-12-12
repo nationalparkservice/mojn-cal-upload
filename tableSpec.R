@@ -56,74 +56,167 @@ SpCond.col.spec <- list(CalibrationDate = list(label = "Date",
                                            view = TRUE,
                                            edit = FALSE,
                                            type = "date")
-                        )
+)
+
+DO.col.spec <- list(CalibrationDate = list(label = "Date",
+                                           view = TRUE,
+                                           edit = TRUE,
+                                           type = "date"),
+                    CalibrationTime = list(label = "Time",
+                                           view = TRUE,
+                                           edit = TRUE,
+                                           type = "text"),
+                    PreCalibrationTemperature_C = list(label = 'Pre-cal temp (C)',
+                                                       view = TRUE,
+                                                       edit = TRUE,
+                                                       type = "numeric"),
+                    PreCalibrationReading_percent = list(label = 'Pre-cal (%)',
+                                                         view = TRUE,
+                                                         edit = TRUE,
+                                                         type = "numeric"),
+                    PostCalibrationTemperature_C = list(label = 'Post-cal temp (C)',
+                                                        view = TRUE,
+                                                        edit = TRUE,
+                                                        type = "numeric"),
+                    PostCalibrationReading_percent = list(label = "Post-cal (%)",
+                                                          view = TRUE,
+                                                          edit = TRUE,
+                                                          type = "numeric"),
+                    DOInstrumentID = list(label = "Instrument",
+                                          view = TRUE,
+                                          edit = TRUE,
+                                          type = "select",
+                                          lookup = db.ref.wqinstr %>% collect(),
+                                          lookup.pk = "ID",
+                                          lookup.text = "Label"),
+                    Notes = list(label = "Notes",
+                                 view = TRUE,
+                                 edit = TRUE,
+                                 type = "notes"),
+                    DateCreated = list(label = "Date Created",
+                                       view = TRUE,
+                                       edit = FALSE,
+                                       type = "date")
+)
+
+pH.col.spec <- list(CalibrationDate = list(label = "Date",
+                                           view = TRUE,
+                                           edit = TRUE,
+                                           type = "date"),
+                    CalibrationTime = list(label = "Time",
+                                           view = TRUE,
+                                           edit = TRUE,
+                                           type = "text"),
+                    StandardValue_pH = list(label = "Standard",
+                                            view = TRUE,
+                                            edit = TRUE,
+                                            type = "numeric"),
+                    TemperatureCorrectedStd_pH = list(label = "Temp. corrected standard",
+                                                      view = TRUE,
+                                                      edit = TRUE,
+                                                      type = "numeric"),
+                    PreCalibrationTemperature_C = list(label = 'Pre-cal temp (C)',
+                                                       view = TRUE,
+                                                       edit = TRUE,
+                                                       type = "numeric"),
+                    PreCalibrationReading_pH = list(label = 'Pre-cal pH',
+                                                    view = TRUE,
+                                                    edit = TRUE,
+                                                    type = "numeric"),
+                    PostCalibrationTemperature_C = list(label = 'Post-cal temp (C)',
+                                                        view = TRUE,
+                                                        edit = TRUE,
+                                                        type = "numeric"),
+                    PostCalibrationReading_pH = list(label = "Post-cal pH",
+                                                     view = TRUE,
+                                                     edit = TRUE,
+                                                     type = "numeric"),
+                    pHInstrumentID = list(label = "Instrument",
+                                          view = TRUE,
+                                          edit = TRUE,
+                                          type = "select",
+                                          lookup = db.ref.wqinstr %>% collect(),
+                                          lookup.pk = "ID",
+                                          lookup.text = "Label"),
+                    Notes = list(label = "Notes",
+                                 view = TRUE,
+                                 edit = TRUE,
+                                 type = "notes"),
+                    DateCreated = list(label = "Date Created",
+                                       view = TRUE,
+                                       edit = FALSE,
+                                       type = "date")
+)
 
 # Calibration table spec
-calib.table.spec <- list(CalibrationSpCond = list(table.name = "CalibrationSpCond",
-                                                  search.string = "*_CalibrationSpCond.csv",
-                                                  col.types = cols(CalibrationDate = col_character(),
-                                                                   CalibrationTime = col_time(),
-                                                                   StandardValue_microS_per_cm = col_double(),
-                                                                   PreCalibrationReading_microS_per_cm = col_double(),
-                                                                   PostCalibrationReading_microS_per_cm = col_double(),
-                                                                   SpCondInstrumentGUID = col_character(),
-                                                                   Notes = col_character(),
-                                                                   GUID = col_character(),
-                                                                   DateCreated = col_character()),
-                                                  data.manip = function(data)({
-                                                    data <- data %>%
-                                                      mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S"),
-                                                             CalibrationDate = as.Date(CalibrationDate, format = "%m/%d/%Y")) %>%  # Format dates and times so they display properly
-                                                      left_join(db.ref.wqinstr, by = c("SpCondInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
-                                                      select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -SpCondInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
-                                                      rename(SpCondInstrumentID = ID)
-                                                    return(data)
-                                                  })
-                                                  ),
-                         CalibrationDO = list(table.name = "CalibrationDO",
-                                              search.string = "*_CalibrationDO.csv",
-                                              col.types = cols(CalibrationDate = col_character(),
-                                                               CalibrationTime = col_time(),
-                                                               PreCalibrationTemperature_C = col_double(),
-                                                               PreCalibrationReading_percent = col_double(),
-                                                               PostCalibrationTemperature_C = col_double(),
-                                                               PostCalibrationReading_percent = col_double(),
-                                                               DOInstrumentGUID = col_character(),
-                                                               Notes = col_character(),
-                                                               GUID = col_character(),
-                                                               DateCreated = col_character()),
-                                              data.manip = function(data)({
-                                                data <- data %>%
-                                                  mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S"),
-                                                         CalibrationDate = as.Date(CalibrationDate, format = "%m/%d/%Y")) %>%  # Format dates and times so they display properly
-                                                  left_join(db.ref.wqinstr, by = c("DOInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
-                                                  select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -DOInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
-                                                  rename(DOInstrumentID = ID)
-                                                return(data)
-                                              })
-                                              ),
-                         CalibrationpH = list(table.name = "CalibrationpH",
-                                              search.string = "*_CalibrationpH.csv",
-                                              col.types = cols(CalibrationDate = col_character(),
-                                                               CalibrationTime = col_time(),
-                                                               StandardValue_pH = col_integer(),
-                                                               TemperatureCorrectedStd_pH = col_double(),
-                                                               PreCalibrationTemperature_C = col_double(),
-                                                               PreCalibrationReading_pH = col_double(),
-                                                               PostCalibrationTemperature_C = col_double(),
-                                                               PostCalibrationReading_pH = col_double(),
-                                                               DOInstrumentGUID = col_character(),
-                                                               Notes = col_character(),
-                                                               GUID = col_character(),
-                                                               DateCreated = col_character()),
-                                              data.manip = function(data)({
-                                                data <- data %>%
-                                                  mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S"),
-                                                         CalibrationDate = as.Date(CalibrationDate, format = "%m/%d/%Y")) %>%  # Format dates and times so they display properly
-                                                  left_join(db.ref.wqinstr, by = c("pHInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
-                                                  select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -pHInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
-                                                  rename(pHInstrumentID = ID)
-                                                return(data)
-                                              })
-                                              )
-                         )
+table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
+                                        display.name = "Dissolved Oxygen",
+                                        search.string = "*_CalibrationDO.csv",
+                                        col.types = cols(CalibrationDate = col_character(),
+                                                         CalibrationTime = col_time(),
+                                                         PreCalibrationTemperature_C = col_double(),
+                                                         PreCalibrationReading_percent = col_double(),
+                                                         PostCalibrationTemperature_C = col_double(),
+                                                         PostCalibrationReading_percent = col_double(),
+                                                         DOInstrumentGUID = col_character(),
+                                                         Notes = col_character(),
+                                                         GUID = col_character(),
+                                                         DateCreated = col_character()),
+                                        col.spec = DO.col.spec,
+                                        data.manip = function(data)({
+                                          data <- data %>%
+                                            mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S"),
+                                                   CalibrationDate = as.Date(CalibrationDate, format = "%m/%d/%Y")) %>%  # Format dates and times so they display properly
+                                            left_join(db.ref.wqinstr, by = c("DOInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
+                                            select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -DOInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
+                                            rename(DOInstrumentID = ID)
+                                          return(data)
+                                        })),
+                   CalibrationpH = list(table.name = "CalibrationpH",
+                                        display.name = "pH",
+                                        search.string = "*_CalibrationpH.csv",
+                                        col.types = cols(CalibrationDate = col_character(),
+                                                         CalibrationTime = col_time(),
+                                                         StandardValue_pH = col_integer(),
+                                                         TemperatureCorrectedStd_pH = col_double(),
+                                                         PreCalibrationTemperature_C = col_double(),
+                                                         PreCalibrationReading_pH = col_double(),
+                                                         PostCalibrationTemperature_C = col_double(),
+                                                         PostCalibrationReading_pH = col_double(),
+                                                         pHInstrumentGUID = col_character(),
+                                                         Notes = col_character(),
+                                                         GUID = col_character(),
+                                                         DateCreated = col_character()),
+                                        col.spec = pH.col.spec,
+                                        data.manip = function(data)({
+                                          data <- data %>%
+                                            mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S"),
+                                                   CalibrationDate = as.Date(CalibrationDate, format = "%m/%d/%Y")) %>%  # Format dates and times so they display properly
+                                            left_join(db.ref.wqinstr, by = c("pHInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
+                                            select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -pHInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
+                                            rename(pHInstrumentID = ID)
+                                          return(data)
+                                        })),
+                   CalibrationSpCond = list(table.name = "CalibrationSpCond",
+                                            display.name = "Specific Conductance",
+                                            search.string = "*_CalibrationSpCond.csv",
+                                            col.types = cols(CalibrationDate = col_character(),
+                                                             CalibrationTime = col_time(),
+                                                             StandardValue_microS_per_cm = col_double(),
+                                                             PreCalibrationReading_microS_per_cm = col_double(),
+                                                             PostCalibrationReading_microS_per_cm = col_double(),
+                                                             SpCondInstrumentGUID = col_character(),
+                                                             Notes = col_character(),
+                                                             GUID = col_character(),
+                                                             DateCreated = col_character()),
+                                            col.spec = SpCond.col.spec,
+                                            data.manip = function(data)({
+                                              data <- data %>%
+                                                mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S"),
+                                                       CalibrationDate = as.Date(CalibrationDate, format = "%m/%d/%Y")) %>%  # Format dates and times so they display properly
+                                                left_join(db.ref.wqinstr, by = c("SpCondInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
+                                                select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -SpCondInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
+                                                rename(SpCondInstrumentID = ID)
+                                              return(data)
+                                            }))
+)

@@ -24,19 +24,18 @@ ui <- fluidPage(
     
     # Show the incoming calibration data
     mainPanel(
-      tabsetPanel(type = "tabs",
-                  tabPanel("SpCond",
-                           dataViewAndEditUI("SpCond")
-                  ),
-                  tabPanel("DO",
-                           h3("Uploaded data"),
-                           dataTableOutput("DO.in")
-                  ),
-                  tabPanel("pH",
-                           h3("Uploaded data"),
-                           dataTableOutput("pH.in")
-                  )
-      )
+      tabsetPanel(id = "view.edit.tabs", type = "tabs")
+                  # tabPanel("SpCond",
+                  #          dataViewAndEditUI("SpCond")
+                  # ),
+                  # tabPanel("DO",
+                  #          h3("Uploaded data"),
+                  #          dataTableOutput("DO.in")
+                  # ),
+                  # tabPanel("pH",
+                  #          h3("Uploaded data"),
+                  #          dataTableOutput("pH.in")
+                  # )
     )
   )
 )
@@ -46,24 +45,30 @@ server <- function(input, output, session) {
   
   # Get new specific conductance calibration data from uploaded files
   # TODO: Omit data that are already in the database
-  calib.data <- callModule(fileImport, "import.data", calib.table.spec)
+  calib.data <- callModule(fileImport, "import.data", table.spec)
   
-  sp.cond <- reactive({
-    calib.data()$CalibrationSpCond %>%
-      mutate(CalibrationTime = format(CalibrationTime, "%H:%M"),
-             CalibrationDate = as.Date(CalibrationDate, format = "%m/%d/%Y")) %>%  # Format dates and times so they display properly
-      left_join(db.ref.wqinstr, by = c("SpCondInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table by GUID
-      select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -SpCondInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
-      rename(SpCondInstrumentID = ID)
+  # Loop through tables in table spec and create a tab for each one with a dataViewAndEdit module
+  observe({
+    #browser()
+    calib.data()
+    tabs <- vector(mode = "list", length = length(table.spec))
+    names(tabs) <- names(table.spec)
+    for (table in table.spec) {
+      # Make a tab to view/edit the data table
+      appendTab("view.edit.tabs", tabPanel(table$display.name, dataViewAndEditUI(table$table.name)), select = TRUE)
+      # Clean up data, if present
+      if (nrow(calib.data()[[table$table.name]]) > 0) {
+        clean.data <- calib.data()[[table$table.name]] %>% table$data.manip()
+      } else {
+        clean.data <- data_frame()
+      }
+      
+      # Display data
+      callModule(dataViewAndEdit, id = table$table.name, data = clean.data, col.spec = table$col.spec)
+      
+    }
+
   })
-
-  # Get new dissolved oxygen calibration data from uploaded files
-
-  
-  # Get new pH calibration data from uploaded files
-  
-  # Display SpCond data table and edit boxes
-  callModule(dataViewAndEdit, "SpCond", data = sp.cond(), col.spec = SpCond.col.spec)
 }
 
 # Run the application 
