@@ -20,7 +20,7 @@ db.ref.wqinstr <- tbl(pool, in_schema("ref", "WaterQualityInstrument"))
 dropdown.wqinstr <- arrange(db.ref.wqinstr, desc(IsActive), Model) %>% collect()
 dropdown.wqinstr <- setNames(dropdown.wqinstr$ID, dropdown.wqinstr$Label)
 
-
+# Col specs - it is assumed that all of the columns in the column specification should be uploaded to the database after data review
 SpCond.col.spec <- list(CalibrationDate = list(label = "Date",
                                                view = TRUE,
                                                edit = TRUE,
