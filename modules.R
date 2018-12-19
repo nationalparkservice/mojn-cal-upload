@@ -404,6 +404,7 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
     removeModal()
   })
   
+  return(data.in())
 }
 
 # Data upload module UI

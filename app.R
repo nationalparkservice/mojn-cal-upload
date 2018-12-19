@@ -47,6 +47,7 @@ server <- function(input, output, session) {
   # TODO: Omit data that are already in the database
   calib.data <- callModule(fileImport, "import.data", table.spec)
   
+  final.data <- reactiveValues()
   # Loop through tables in table spec and create a tab for each one with a dataViewAndEdit module
   observe({
     #browser()
@@ -66,6 +67,7 @@ server <- function(input, output, session) {
       # Display data
       callModule(dataViewAndEdit, id = table$table.name, data = clean.data, col.spec = table$col.spec)
       
+      final.data[[table$table.name]] <- callModule(dataViewAndEdit, id = table$table.name, data = clean.data, col.spec = table$col.spec)
     }
 
   })
