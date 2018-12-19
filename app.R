@@ -46,30 +46,25 @@ server <- function(input, output, session) {
   # Get new specific conductance calibration data from uploaded files
   # TODO: Omit data that are already in the database
   calib.data <- callModule(fileImport, "import.data", table.spec)
-  
   final.data <- reactiveValues()
   # Loop through tables in table spec and create a tab for each one with a dataViewAndEdit module
   observe({
-    #browser()
     calib.data()
     tabs <- vector(mode = "list", length = length(table.spec))
     names(tabs) <- names(table.spec)
+    
     for (table in table.spec) {
       # Make a tab to view/edit the data table
-      appendTab("view.edit.tabs", tabPanel(table$display.name, dataViewAndEditUI(table$table.name)), select = TRUE)
+      appendTab("view.edit.tabs", tabPanel(table$display.name, dataViewAndEditUI(table$table.name), select = FALSE))
       # Clean up data, if present
       if (nrow(calib.data()[[table$table.name]]) > 0) {
         clean.data <- calib.data()[[table$table.name]] %>% table$data.manip()
       } else {
         clean.data <- data_frame()
       }
-      
       # Display data
-      callModule(dataViewAndEdit, id = table$table.name, data = clean.data, col.spec = table$col.spec)
-      
       final.data[[table$table.name]] <- callModule(dataViewAndEdit, id = table$table.name, data = clean.data, col.spec = table$col.spec)
     }
-
   })
 }
 
