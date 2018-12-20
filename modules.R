@@ -231,7 +231,7 @@ dataViewAndEditUI <- function(id) {
 
 # Data view and edit module server function
 dataViewAndEdit <- function(input, output, session, data, col.spec) {
-  # File import module that reads csv data files into dataframes in a reactiveValues object.
+  # Module for viewing data in a dataframe and selecting/editing rows
   #
   # Args:
   #   input, output, session: required parameters for Shiny server function.
@@ -404,12 +404,12 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
     removeModal()
   })
   
-  return(data.in())
+  return(data.in)
 }
 
 # Data upload module UI
 dataUploadUI <- function(id) {
-  # UI module for viewing data in a dataframe and selecting/editing rows.
+  # UI module for viewing final data and uploading it to a database.
   #
   # Args:
   #   id: The namespace for the module
@@ -426,11 +426,11 @@ dataUploadUI <- function(id) {
 
 # Data upload module server function
 dataUpload <- function(input, output, session, data, col.spec) {
-  # File import module that reads csv data files into dataframes in a reactiveValues object.
+  # Module for viewing final data and uploading it to a database.
   #
   # Args:
   #   input, output, session: required parameters for Shiny server function.
-  #   data: The data table to be viewed/edited.
+  #   data: The data table to be uploaded.
   #   col.spec: A list of columns, each a list containing the following:
   #                 label: A readable, concise name that will be used to label table columns and edit boxes.
   #                 view: Boolean value indicating whether to show the column in the table.
@@ -445,8 +445,8 @@ dataUpload <- function(input, output, session, data, col.spec) {
   
   final.data <- reactive({
     # Do nothing if no data present
-    validate(need(data, message = FALSE))
-    data
+    validate(need(data(), message = FALSE))
+    data()
   })
   
     # Populate table

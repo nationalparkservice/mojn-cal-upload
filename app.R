@@ -47,24 +47,37 @@ server <- function(input, output, session) {
   # TODO: Omit data that are already in the database
   calib.data <- callModule(fileImport, "import.data", table.spec)
   final.data <- reactiveValues()
-  # Loop through tables in table spec and create a tab for each one with a dataViewAndEdit module
-  observe({
-    calib.data()
-    tabs <- vector(mode = "list", length = length(table.spec))
-    names(tabs) <- names(table.spec)
-    
+  
+  clean.data <- reactive({
+    temp <- list()
     for (table in table.spec) {
-      # Make a tab to view/edit the data table
-      appendTab("view.edit.tabs", tabPanel(table$display.name, dataViewAndEditUI(table$table.name), select = FALSE))
       # Clean up data, if present
       if (nrow(calib.data()[[table$table.name]]) > 0) {
-        clean.data <- calib.data()[[table$table.name]] %>% table$data.manip()
+        temp[[table$table.name]] <- calib.data()[[table$table.name]] %>% table$data.manip()
       } else {
-        clean.data <- data_frame()
+        temp[[table$table.name]] <- data_frame()
       }
-      # Display data
-      final.data[[table$table.name]] <- callModule(dataViewAndEdit, id = table$table.name, data = clean.data, col.spec = table$col.spec)
     }
+    temp
+  })
+  
+  # For each table in the table specification, create a tab for viewing and editing data. Create a reactiveValues object from the reviewed and edited data returned by the dataViewAndEdit module.
+  final.data <- lapply(table.spec, function(table){
+    force(table)  # force evaluation of the table argument so that the call to the dataViewAndEdit module gets the correct table information
+    appendTab("view.edit.tabs", tabPanel(table$display.name, dataViewAndEditUI(table$table.name), dataUploadUI(paste0(table$table.name, ".upload")), select = TRUE))
+    reactive(callModule(dataViewAndEdit, id = table$table.name, data = clean.data()[[table$table.name]], col.spec = table$col.spec))
+  })
+  
+  # Call the data upload module
+  # TODO: Do this with a for loop
+  observe({
+    final.data$CalibrationSpCond
+    final.data$CalibrationDO
+    final.data$CalibrationpH
+    callModule(dataUpload, id = "CalibrationSpCond.upload", data = final.data$CalibrationSpCond(), col.spec = table.spec$CalibrationSpCond$col.spec)
+    callModule(dataUpload, id = "CalibrationDO.upload", data = final.data$CalibrationDO(), col.spec = table.spec$CalibrationDO$col.spec)
+    callModule(dataUpload, id = "CalibrationpH.upload", data = final.data$CalibrationpH(), col.spec = table.spec$CalibrationpH$col.spec)
+    
   })
 }
 
