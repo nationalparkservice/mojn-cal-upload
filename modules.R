@@ -275,7 +275,7 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   
   # Rename fk columns 
   table.cols[which(table.cols$name %in% fk.cols), "name"] <- paste0(table.cols$name[which(table.cols$name %in% fk.cols)], "_lookup")
-  
+
   # Populate table
   output$data.view <- renderDT({
     input$save
@@ -294,16 +294,15 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
           data.view <- data.in() %>%
             left_join(lookup.tbl, by = setNames(lookup.pk, col))
           
-          # 
+          # Rename display columns from lookups to something meaningful
           data.view <- data.view %>%
-            setnames(old = lookup.text, new = paste0(col, "_lookup"))# %>%
-          #select(-lookup.text)
+            setnames(old = lookup.text, new = paste0(col, "_lookup"))
         }
         
+        # Create the data table
         data.view %>%
-          select(table.cols$name) %>%
-          singleSelectDT(col.names = table.cols$label)
-
+          select(table.cols$name) %>%  # Only use columns where view = TRUE in the column spec
+          singleSelectDT(col.names = table.cols$label)  # Use friendly labels from column spec as table headers
     }
   })
   
@@ -441,7 +440,7 @@ dataUpload <- function(input, output, session, data, col.spec) {
   #                 lookup.text: If lookup table specified, the name of the column in the lookup table that contains meaningful codes or labels. Otherwise omit this argument.
   #
   # Returns:
-  #   A dataframe of reviewed data
+  #   A boolean value indicating whether data upload was successful
   
   final.data <- reactive({
     # Do nothing if no data present

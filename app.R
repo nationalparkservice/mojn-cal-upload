@@ -25,17 +25,6 @@ ui <- fluidPage(
     # Show the incoming calibration data
     mainPanel(
       tabsetPanel(id = "view.edit.tabs", type = "tabs")
-                  # tabPanel("SpCond",
-                  #          dataViewAndEditUI("SpCond")
-                  # ),
-                  # tabPanel("DO",
-                  #          h3("Uploaded data"),
-                  #          dataTableOutput("DO.in")
-                  # ),
-                  # tabPanel("pH",
-                  #          h3("Uploaded data"),
-                  #          dataTableOutput("pH.in")
-                  # )
     )
   )
 )
@@ -43,22 +32,25 @@ ui <- fluidPage(
 # Define server logic
 server <- function(input, output, session) {
   
-  # Get new specific conductance calibration data from uploaded files
+  # Get new data from uploaded files
   # TODO: Omit data that are already in the database
   calib.data <- callModule(fileImport, "import.data", table.spec)
+  
+  # Initialize reactiveValues object to store final reviewed/edited data
   final.data <- reactiveValues()
   
+  # Clean up data from uploaded files using data manipulation functions provided in the table specification
   clean.data <- reactive({
-    temp <- list()
+    clean.data <- list()
     for (table in table.spec) {
       # Clean up data, if present
       if (nrow(calib.data()[[table$table.name]]) > 0) {
-        temp[[table$table.name]] <- calib.data()[[table$table.name]] %>% table$data.manip()
+        clean.data[[table$table.name]] <- calib.data()[[table$table.name]] %>% table$data.manip()
       } else {
-        temp[[table$table.name]] <- data_frame()
+        clean.data[[table$table.name]] <- data_frame()
       }
     }
-    temp
+    clean.data
   })
   
   # For each table in the table specification, create a tab for viewing and editing data. Create a reactiveValues object from the reviewed and edited data returned by the dataViewAndEdit module.
