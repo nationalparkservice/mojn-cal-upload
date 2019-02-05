@@ -364,12 +364,12 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
     }
   })
   
-  # Cancel changes to SpCond data
+  # Cancel changes to data
   observeEvent(input$cancel, {
     dt.proxy %>% selectRows(NULL)
   })
   
-  # Delete a row of SpCond data
+  # Delete a row of data
   observeEvent(input$delete, {
     # If no rows are selected, don't do anything
     if (!is.null(input$data.view_rows_selected)) {
