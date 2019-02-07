@@ -344,6 +344,9 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
           value <- as.numeric(value)
         } else if (input.type == "date") {
           value <- format(value)
+        } else if (input.type == "time") {
+          value <- as.POSIXlt.character(value, tryFormats = c("%I:%M %p","%I:%M:%S %p", "%I %p", "%H:%M", "%H:%M:%S")) %>%
+            format("%H:%M:%S")
         }
         
         updated.row[1, input.name] <- value
