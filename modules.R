@@ -354,7 +354,8 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
       
       #Assign the new values to the data frame
       new.data <- data.in()
-      if (any(new.data[input$data.view_rows_selected, edit.cols$name] != updated.row[1, ])) {
+      data.changed <- any(new.data[input$data.view_rows_selected, edit.cols$name] != updated.row[1, ])
+      if (data.changed || is.na(data.changed)) {
         new.data[input$data.view_rows_selected, edit.cols$name] <- updated.row[1, ]
         data.in(new.data)
         showNotification("Data saved", type = "message")
