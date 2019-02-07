@@ -278,32 +278,33 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
 
   # Populate table
   output$data.view <- renderDT({
-    input$save
-    input$delete
     data.in()
     
-    # only show data table if there are data to display
-    if (nrow(data.in()) > 0) {
-
-        for (col in fk.cols) {
-          lookup.tbl <- col.spec[[col]]$lookup  # get lookup table
-          lookup.pk <- col.spec[[col]]$lookup.pk  # primary key of lookup table
-          lookup.text <- col.spec[[col]]$lookup.text  # column in lookup table to display
+    isolate({
+      # only show data table if there are data to display
+      if (nrow(data.in()) > 0) {
+  
+          for (col in fk.cols) {
+            lookup.tbl <- col.spec[[col]]$lookup  # get lookup table
+            lookup.pk <- col.spec[[col]]$lookup.pk  # primary key of lookup table
+            lookup.text <- col.spec[[col]]$lookup.text  # column in lookup table to display
+            
+            # Join data table to lookup table
+            data.view <- data.in() %>%
+              left_join(lookup.tbl, by = setNames(lookup.pk, col))
+            
+            # Rename display columns from lookups to something meaningful
+            data.view <- data.view %>%
+              setnames(old = lookup.text, new = paste0(col, "_lookup"))
+          }
           
-          # Join data table to lookup table
-          data.view <- data.in() %>%
-            left_join(lookup.tbl, by = setNames(lookup.pk, col))
-          
-          # Rename display columns from lookups to something meaningful
-          data.view <- data.view %>%
-            setnames(old = lookup.text, new = paste0(col, "_lookup"))
-        }
-        
-        # Create the data table
-        data.view %>%
-          select(table.cols$name) %>%  # Only use columns where view = TRUE in the column spec
-          singleSelectDT(col.names = table.cols$label)  # Use friendly labels from column spec as table headers
-    }
+          # Create the data table
+          data.view %>%
+            select(table.cols$name) %>%  # Only use columns where view = TRUE in the column spec
+            singleSelectDT(col.names = table.cols$label) # Use friendly labels from column spec as table headers
+      }
+    })
+    
   })
   
   # Add edit boxes to UI
@@ -315,8 +316,7 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   })
   
   # Populate editable input boxes with values from the selected row
-  observe({
-    input$data.view_rows_selected
+  observeEvent(input$data.view_rows_selected, {
     # TODO: Check if there are unsaved changes in the input boxes before deselecting a row or selecting a new row
     updateEditBoxes(session, edit.cols, input$data.view_rows_selected, data.in())
   })
