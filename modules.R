@@ -427,7 +427,7 @@ dataUploadUI <- function(id) {
 }
 
 # Data upload module server function
-dataUpload <- function(input, output, session, data, col.spec) {
+dataUpload <- function(input, output, session, data, table.spec) {
   # Module for viewing final data and uploading it to a database.
   #
   # Args:
@@ -458,8 +458,8 @@ dataUpload <- function(input, output, session, data, col.spec) {
     # only show data table if there are data to display
     if (nrow(final.data()) > 0) {
       final.data() %>%
-        select(names(col.spec)) %>%
-        singleSelectDT(col.names = names(col.spec))
+        select(names(table.spec$col.spec)) %>%
+        singleSelectDT(col.names = names(table.spec$col.spec))
     }
     
   })
@@ -484,12 +484,56 @@ dataUpload <- function(input, output, session, data, col.spec) {
   
   observeEvent(input$conf.upload, {
     # Attempt to append data to table in database
-    
-    # If successful, display success message and disable repeat uploads
-    
-    # If unsuccessful, display error message
-    
-    removeModal()
+    tryCatch({
+      # If successful, display success message
+      # TODO: disable repeat uploads
+      table.spec$data.upload(final.data())
+      removeModal()
+      showModal({
+        modalDialog(
+          h3("Upload success"),
+          p("Successful data upload"),
+          footer = tagList(
+            modalButton("Ok")
+          ),
+          easyClose = FALSE,
+          size = "s"
+        )
+      })
+    },
+    error = function(c) {
+      # If unsuccessful, display error message
+      showModal({
+        modalDialog(
+          h3("Upload error"),
+          p("There was an error uploading the data."),
+          p(paste0("Error message: ", c)),
+          footer = tagList(
+            modalButton("Ok")
+          ),
+          easyClose = FALSE,
+          size = "s"
+        )
+      })
+    },
+    warning = function(c) {
+      showModal({
+        modalDialog(
+          h3("Upload warning"),
+          p("There was an error uploading the data."),
+          p(paste0("Warning message: ", c)),
+          footer = tagList(
+            modalButton("Ok")
+          ),
+          easyClose = FALSE,
+          size = "s"
+        )
+      })
+    },
+    message = function(c) {
+      
+    }
+    )
   })
   
 }

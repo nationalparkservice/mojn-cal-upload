@@ -20,6 +20,25 @@ db.ref.wqinstr <- tbl(pool, in_schema("ref", "WaterQualityInstrument"))
 dropdown.wqinstr <- arrange(db.ref.wqinstr, desc(IsActive), Model) %>% collect()
 dropdown.wqinstr <- setNames(dropdown.wqinstr$ID, dropdown.wqinstr$Label)
 
+# Generate INSERT INTO statement
+insertInto <- function(table.name, data, pool) {
+  poolWithTransaction(pool = pool, func = function(conn) {
+    cols <- paste(names(data), collapse = ", ")
+    placeholders <- rep("?", length(names(data)))
+    placeholders <- paste(placeholders, collapse = ", ")
+    sql <- paste0("INSERT INTO ",
+                 table.name,
+                 " (", cols, ") ",
+                 "VALUES (",
+                 placeholders,
+                 ")")
+    insert <- dbSendStatement(conn, sql)
+    dbBind(insert, as.list(data))
+    dbGetRowsAffected(insert)
+    dbClearResult(insert)
+  })
+}
+
 # Col specs - it is assumed that all of the columns in the column specification should be uploaded to the database after data review
 SpCond.col.spec <- list(CalibrationDate = list(label = "Date",
                                                view = TRUE,
@@ -172,6 +191,14 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                             select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -DOInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
                                             rename(DOInstrumentID = ID)
                                           return(data)
+                                        }),
+                                        data.upload = function(data)({
+                                          # Convert data types to make SQL happy
+                                          data$CalibrationDate <- as.POSIXct(data$CalibrationDate, tz = "GMT")
+                                          data$CalibrationTime <- as.POSIXct(data$CalibrationTime, format = format("%H:%M:%S"), tz = "GMT")
+                                          #data$DateCreated <- as.POSIXct(strptime(data$DateCreated, "%m/%d/%Y %I:%M:%S %p"))
+                                          # Insert data into the CalibrationDO table
+                                          insertInto("data.CalibrationDO", data, pool)
                                         })),
                    CalibrationpH = list(table.name = "CalibrationpH",
                                         display.name = "pH",
@@ -198,6 +225,14 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                             select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -pHInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
                                             rename(pHInstrumentID = ID)
                                           return(data)
+                                        }),
+                                        data.upload = function(data)({
+                                          # Convert data types to make SQL happy
+                                          data$CalibrationDate <- as.POSIXct(data$CalibrationDate, tz = "GMT")
+                                          data$CalibrationTime <- as.POSIXct(data$CalibrationTime, format = format("%H:%M:%S"), tz = "GMT")
+                                          #data$DateCreated <- as.POSIXct(strptime(data$DateCreated, "%m/%d/%Y %I:%M:%S %p"))
+                                          # Insert data into the CalibrationDO table
+                                          insertInto("data.CalibrationpH", data, pool)
                                         })),
                    CalibrationSpCond = list(table.name = "CalibrationSpCond",
                                             display.name = "Specific Conductance",
@@ -221,5 +256,13 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                                 select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -SpCondInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
                                                 rename(SpCondInstrumentID = ID)
                                               return(data)
+                                            }),
+                                            data.upload = function(data)({
+                                              # Convert data types to make SQL happy
+                                              data$CalibrationDate <- as.POSIXct(data$CalibrationDate, tz = "GMT")
+                                              data$CalibrationTime <- as.POSIXct(data$CalibrationTime, format = format("%H:%M:%S"), tz = "GMT")
+                                              #data$DateCreated <- as.POSIXct(strptime(data$DateCreated, "%m/%d/%Y %I:%M:%S %p"))
+                                              # Insert data into the CalibrationDO table
+                                              insertInto("data.CalibrationSpCond", data, pool)
                                             }))
 )

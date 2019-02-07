@@ -66,10 +66,11 @@ server <- function(input, output, session) {
     final.data$CalibrationSpCond
     final.data$CalibrationDO
     final.data$CalibrationpH
-    callModule(dataUpload, id = "CalibrationSpCond.upload", data = final.data$CalibrationSpCond(), col.spec = table.spec$CalibrationSpCond$col.spec)
-    callModule(dataUpload, id = "CalibrationDO.upload", data = final.data$CalibrationDO(), col.spec = table.spec$CalibrationDO$col.spec)
-    callModule(dataUpload, id = "CalibrationpH.upload", data = final.data$CalibrationpH(), col.spec = table.spec$CalibrationpH$col.spec)
-    
+    isolate({
+      callModule(dataUpload, id = "CalibrationSpCond.upload", data = final.data$CalibrationSpCond(), table.spec = table.spec$CalibrationSpCond)
+      callModule(dataUpload, id = "CalibrationDO.upload", data = final.data$CalibrationDO(), table.spec = table.spec$CalibrationDO)
+      callModule(dataUpload, id = "CalibrationpH.upload", data = final.data$CalibrationpH(), table.spec = table.spec$CalibrationpH)
+    })
   })
 }
 
