@@ -315,8 +315,11 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
     }
   })
   
+  # Create a reactive expression so that observeEvent fires when a row is deselected
+  rows_selected <- reactive(!is.null(input$data.view_rows_selected))
+  
   # Populate editable input boxes with values from the selected row
-  observeEvent(input$data.view_rows_selected, {
+  observeEvent(rows_selected(), {
     # TODO: Check if there are unsaved changes in the input boxes before deselecting a row or selecting a new row
     updateEditBoxes(session, edit.cols, input$data.view_rows_selected, data.in())
   })
