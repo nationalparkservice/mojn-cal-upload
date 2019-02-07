@@ -352,7 +352,7 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
         updated.row[1, input.name] <- value
       }
       
-      #Assign the new values to the SpCond data frame
+      #Assign the new values to the data frame
       new.data <- data.in()
       if (any(new.data[input$data.view_rows_selected, edit.cols$name] != updated.row[1, ])) {
         new.data[input$data.view_rows_selected, edit.cols$name] <- updated.row[1, ]
