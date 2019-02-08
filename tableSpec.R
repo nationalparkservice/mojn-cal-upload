@@ -201,7 +201,10 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                           # Convert data types to make SQL happy
                                           data$CalibrationDate <- as.POSIXct(data$CalibrationDate, tz = "GMT")
                                           data$CalibrationTime <- as.POSIXct(data$CalibrationTime, format = format("%H:%M:%S"), tz = "GMT")
-                                          #data$DateCreated <- as.POSIXct(strptime(data$DateCreated, "%m/%d/%Y %I:%M:%S %p"))
+                                          data$Notes[trimws(data$Notes, "both") == ""] <- NA  # Convert blank notes to NA
+                                          if (all(is.na(data$Notes))) {
+                                            data$Notes <- as.logical(data$Notes)
+                                          }
                                           # Insert data into the CalibrationDO table
                                           insertInto("data.CalibrationDO", data, pool)
                                         })),
@@ -235,7 +238,10 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                           # Convert data types to make SQL happy
                                           data$CalibrationDate <- as.POSIXct(data$CalibrationDate, tz = "GMT")
                                           data$CalibrationTime <- as.POSIXct(data$CalibrationTime, format = format("%H:%M:%S"), tz = "GMT")
-                                          #data$DateCreated <- as.POSIXct(strptime(data$DateCreated, "%m/%d/%Y %I:%M:%S %p"))
+                                          data$Notes[trimws(data$Notes, "both") == ""] <- NA  # Convert blank notes to NA
+                                          if (all(is.na(data$Notes))) {
+                                            data$Notes <- as.logical(data$Notes)
+                                          }
                                           # Insert data into the CalibrationDO table
                                           insertInto("data.CalibrationpH", data, pool)
                                         })),
@@ -266,7 +272,10 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                               # Convert data types to make SQL happy
                                               data$CalibrationDate <- as.POSIXct(data$CalibrationDate, tz = "GMT")
                                               data$CalibrationTime <- as.POSIXct(data$CalibrationTime, format = format("%H:%M:%S"), tz = "GMT")
-                                              #data$DateCreated <- as.POSIXct(strptime(data$DateCreated, "%m/%d/%Y %I:%M:%S %p"))
+                                              data$Notes[trimws(data$Notes, "both") == ""] <- NA  # Convert blank notes to NA
+                                              if (all(is.na(data$Notes))) {
+                                                data$Notes <- as.logical(data$Notes)
+                                              }
                                               # Insert data into the CalibrationDO table
                                               insertInto("data.CalibrationSpCond", data, pool)
                                             }))
