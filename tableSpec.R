@@ -20,9 +20,26 @@ db.ref.wqinstr <- tbl(pool, in_schema("ref", "WaterQualityInstrument"))
 dropdown.wqinstr <- arrange(db.ref.wqinstr, desc(IsActive), Model) %>% collect()
 dropdown.wqinstr <- setNames(dropdown.wqinstr$ID, dropdown.wqinstr$Label)
 
+# Prepare data for insert into the database
+prepDataForInsert <- function(data) {
+  # Convert data types to make SQL happy
+  data$CalibrationDate <- as.POSIXct(data$CalibrationDate, tz = "GMT")
+  data$CalibrationTime <- as.POSIXct(data$CalibrationTime, format = format("%H:%M:%S"), tz = "GMT")
+  data$Notes[trimws(data$Notes, "both") == ""] <- NA  # Convert blank notes to NA
+  # Prevent "NA" being inserted into the database as a string. This seems to only happen when there is a single row in
+  # the data frame and a column of type character contains NA. Converting that column to type logical fixes the problem.
+  if (all(is.na(data$Notes))) {
+    data$Notes <- as.logical(data$Notes)
+  }
+  
+  data
+}
+
 # Generate INSERT INTO statement
 insertInto <- function(table.name, data, pool) {
   if (nrow(data) > 0) {
+    data <- prepDataForInsert(data)
+    
     poolWithTransaction(pool = pool, func = function(conn) {
       cols <- paste(names(data), collapse = ", ")
       placeholders <- rep("?", length(names(data)))
@@ -200,13 +217,6 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                           return(data)
                                         }),
                                         data.upload = function(data)({
-                                          # Convert data types to make SQL happy
-                                          data$CalibrationDate <- as.POSIXct(data$CalibrationDate, tz = "GMT")
-                                          data$CalibrationTime <- as.POSIXct(data$CalibrationTime, format = format("%H:%M:%S"), tz = "GMT")
-                                          data$Notes[trimws(data$Notes, "both") == ""] <- NA  # Convert blank notes to NA
-                                          if (all(is.na(data$Notes))) {
-                                            data$Notes <- as.logical(data$Notes)
-                                          }
                                           # Insert data into the CalibrationDO table
                                           insertInto("data.CalibrationDO", data, pool)
                                         })),
@@ -237,14 +247,7 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                           return(data)
                                         }),
                                         data.upload = function(data)({
-                                          # Convert data types to make SQL happy
-                                          data$CalibrationDate <- as.POSIXct(data$CalibrationDate, tz = "GMT")
-                                          data$CalibrationTime <- as.POSIXct(data$CalibrationTime, format = format("%H:%M:%S"), tz = "GMT")
-                                          data$Notes[trimws(data$Notes, "both") == ""] <- NA  # Convert blank notes to NA
-                                          if (all(is.na(data$Notes))) {
-                                            data$Notes <- as.logical(data$Notes)
-                                          }
-                                          # Insert data into the CalibrationDO table
+                                          # Insert data into the CalibrationpH table
                                           insertInto("data.CalibrationpH", data, pool)
                                         })),
                    CalibrationSpCond = list(table.name = "CalibrationSpCond",
@@ -271,14 +274,7 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                               return(data)
                                             }),
                                             data.upload = function(data)({
-                                              # Convert data types to make SQL happy
-                                              data$CalibrationDate <- as.POSIXct(data$CalibrationDate, tz = "GMT")
-                                              data$CalibrationTime <- as.POSIXct(data$CalibrationTime, format = format("%H:%M:%S"), tz = "GMT")
-                                              data$Notes[trimws(data$Notes, "both") == ""] <- NA  # Convert blank notes to NA
-                                              if (all(is.na(data$Notes))) {
-                                                data$Notes <- as.logical(data$Notes)
-                                              }
-                                              # Insert data into the CalibrationDO table
+                                              # Insert data into the CalibrationSpCond table
                                               insertInto("data.CalibrationSpCond", data, pool)
                                             }))
 )
