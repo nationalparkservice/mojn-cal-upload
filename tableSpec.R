@@ -22,21 +22,23 @@ dropdown.wqinstr <- setNames(dropdown.wqinstr$ID, dropdown.wqinstr$Label)
 
 # Generate INSERT INTO statement
 insertInto <- function(table.name, data, pool) {
-  poolWithTransaction(pool = pool, func = function(conn) {
-    cols <- paste(names(data), collapse = ", ")
-    placeholders <- rep("?", length(names(data)))
-    placeholders <- paste(placeholders, collapse = ", ")
-    sql <- paste0("INSERT INTO ",
-                 table.name,
-                 " (", cols, ") ",
-                 "VALUES (",
-                 placeholders,
-                 ")")
-    insert <- dbSendStatement(conn, sql)
-    dbBind(insert, as.list(data))
-    dbGetRowsAffected(insert)
-    dbClearResult(insert)
-  })
+  if (nrow(data) > 0) {
+    poolWithTransaction(pool = pool, func = function(conn) {
+      cols <- paste(names(data), collapse = ", ")
+      placeholders <- rep("?", length(names(data)))
+      placeholders <- paste(placeholders, collapse = ", ")
+      sql <- paste0("INSERT INTO ",
+                    table.name,
+                    " (", cols, ") ",
+                    "VALUES (",
+                    placeholders,
+                    ")")
+      insert <- dbSendStatement(conn, sql)
+      dbBind(insert, as.list(data))
+      dbGetRowsAffected(insert)
+      dbClearResult(insert)
+    })
+  }
 }
 
 # Col specs - it is assumed that all of the columns in the column specification should be uploaded to the database after data review
