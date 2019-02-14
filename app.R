@@ -5,12 +5,13 @@ library(tidyverse)
 library(pool)
 library(DT)
 library(data.table)
+library(shinythemes)
 
 source("modules.R")
 source("tableSpec.R")
 
 # Define UI for application that imports calibration data from .csv and uploads to database
-ui <- fluidPage(
+ui <- fluidPage(theme = shinytheme("yeti"),
   
   # Application title
   titlePanel("Calibration data upload"),
