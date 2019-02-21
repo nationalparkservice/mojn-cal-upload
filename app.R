@@ -11,25 +11,8 @@ source("modules.R")
 source("tableSpec.R")
 
 # Define UI for application that imports calibration data from .csv and uploads to database
-ui <- fluidPage(theme = shinytheme("yeti"),
+ui <- htmlTemplate("html-templates/calibration-main.html")
   
-  # Application title
-  titlePanel("Calibration data upload"),
-  
-  # Sidebar with input for uploading .csv files 
-  sidebarLayout(
-    sidebarPanel(width = 2,
-      # File input module
-      fileImportInput("import.data")
-    ),
-    
-    # Show the incoming calibration data
-    mainPanel(
-      tabsetPanel(id = "view.edit.tabs", type = "tabs")
-    )
-  )
-)
-
 # Define server logic
 server <- function(input, output, session) {
   
