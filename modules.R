@@ -423,54 +423,24 @@ dataUploadUI <- function(id) {
   ns <- NS(id)
   
   tagList(
-    h3("Final data"),
-    dataTableOutput(ns("final.data")),  # Data table UI for viewing data and selecting a row
     actionButton(ns("submit"), "Submit data")
   )
   
 }
 
 # Data upload module server function
-dataUpload <- function(input, output, session, data, table.spec) {
+dataUpload <- function(input, output, session, data, upload.function) {
   # Module for viewing final data and uploading it to a database.
   #
   # Args:
   #   input, output, session: required parameters for Shiny server function.
   #   data: The data table to be uploaded.
-  #   col.spec: A list of columns, each a list containing the following:
-  #                 label: A readable, concise name that will be used to label table columns and edit boxes.
-  #                 view: Boolean value indicating whether to show the column in the table.
-  #                 edit: Boolean value indicating whether to show the column as an edit box when a row in the table is selected.
-  #                 type: One of "select", "text", "notes", "numeric", "time", or "date", indicating what kind of input box to use.
-  #                 lookup: For foreign key columns, a data table to use as a lookup table. Otherwise omit this argument.
-  #                 lookup.pk: If lookup table specified, the name of the primary key column of the lookup. Otherwise omit this argument.
-  #                 lookup.text: If lookup table specified, the name of the column in the lookup table that contains meaningful codes or labels. Otherwise omit this argument.
+  #   upload.function: The function that will insert the data into the database.
   #
   # Returns:
   #   A boolean value indicating whether data upload was successful
   
-  final.data <- reactive({
-    # Do nothing if no data present
-    validate(need(data(), message = FALSE))
-    data()
-  })
-  
-    # Populate table
-  output$final.data <- renderDT({
-    final.data()
-    
-    # only show data table if there are data to display
-    if (nrow(final.data()) > 0) {
-      final.data() %>%
-        select(names(table.spec$col.spec)) %>%
-        singleSelectDT(col.names = names(table.spec$col.spec))
-    }
-    
-  })
-  
-  # Delete a row of data
   observeEvent(input$submit, {
-    
       # Prompt user to confirm upload
       showModal({
         modalDialog(
@@ -491,7 +461,7 @@ dataUpload <- function(input, output, session, data, table.spec) {
     tryCatch({
       # If successful, display success message
       # TODO: disable repeat uploads
-      table.spec$data.upload(final.data())
+      upload.function(data)
       removeModal()
       showModal({
         modalDialog(
@@ -519,6 +489,7 @@ dataUpload <- function(input, output, session, data, table.spec) {
           size = "s"
         )
       })
+      return(FALSE)
     },
     warning = function(c) {
       showModal({
@@ -533,11 +504,11 @@ dataUpload <- function(input, output, session, data, table.spec) {
           size = "s"
         )
       })
+      return(FALSE)
     },
     message = function(c) {
       
-    }
-    )
+    })
   })
-  
+  return(TRUE)
 }
