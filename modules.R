@@ -186,6 +186,7 @@ fileImport <- function(input, output, session, table.spec) {
   #   A list containing the data read from the input files. Note that duplicate rows will be removed.
   
   data <- list()
+  imports <- list()
   
   # Get list of imported files
   data.files <- reactive({
@@ -195,7 +196,7 @@ fileImport <- function(input, output, session, table.spec) {
   })
   
   # When new files are uploaded, populate data.imports
-  data.imports <- eventReactive(data.files(), {
+  all.data <- eventReactive(data.files(), {
     for (tbl in table.spec) {
       data.in <- readFiles(data.files()$datapath,
                            data.files()$name,
@@ -203,20 +204,45 @@ fileImport <- function(input, output, session, table.spec) {
                            col.types = tbl$col.types)
       data[[tbl$table.name]] <- data.in
     }
-    
-    # # Check if any imported records already exist in the database
-    # existing.SpCond <- db.SpCond %>%
-    #   select(GUID) %>%
-    #   filter(GUID %in% data$CalibrationSpCond$GUID)
-    # #browser()
-    
     data
   })
   
+  # Figure out which, if any, records are already present in the database
+  existing.SpCond <- reactive({
+    db.SpCond %>%
+      filter(GUID %in% all.data()$CalibrationSpCond$GUID) %>%
+      collect()
+  })
   
+  existing.DO <- reactive({
+    db.DO %>%
+      filter(GUID %in% all.data()$CalibrationDO$GUID) %>%
+      collect()
+  })
+  
+  existing.pH <- reactive({
+    db.pH %>%
+      filter(GUID %in% all.data()$CalibrationpH$GUID) %>%
+      collect()
+  })
+  
+  # Omit any data already in the database
+  data.imports <- reactive({
+    browser()
+    imports$CalibrationSpCond <- all.data()$CalibrationSpCond %>%
+      filter(!(GUID %in% existing.SpCond()$GUID))
+    
+    imports$CalibrationDO <- all.data()$CalibrationDO %>%
+      filter(!(GUID %in% existing.DO()$GUID))
+    
+    imports$CalibrationpH <- all.data()$CalibrationpH %>%
+      filter(!(GUID %in% existing.pH()$GUID))
+    
+    imports
+    
+  })
   
   return(data.imports)
-  
 }
 
 
