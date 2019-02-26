@@ -203,8 +203,17 @@ fileImport <- function(input, output, session, table.spec) {
                            col.types = tbl$col.types)
       data[[tbl$table.name]] <- data.in
     }
+    
+    # # Check if any imported records already exist in the database
+    # existing.SpCond <- db.SpCond %>%
+    #   select(GUID) %>%
+    #   filter(GUID %in% data$CalibrationSpCond$GUID)
+    # #browser()
+    
     data
   })
+  
+  
   
   return(data.imports)
   
