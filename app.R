@@ -122,11 +122,9 @@ server <- function(input, output, session) {
   
   # Call the data upload module
   callModule(dataUpload, id = "data.upload", data = final.data, upload.function = function(data){
-    spcond.rows <- table.spec$CalibrationSpCond$data.upload(isolate(data$CalibrationSpCond()))
-    do.rows <- table.spec$CalibrationDO$data.upload(isolate(data$CalibrationDO()))
-    ph.rows <- table.spec$CalibrationpH$data.upload(isolate(data$CalibrationpH()))
-    
-    uploaded.data <- list(spcond = spcond.rows, do = do.rows, ph = ph.rows)
+    table.spec$CalibrationSpCond$data.upload(isolate(data$CalibrationSpCond()))
+    table.spec$CalibrationDO$data.upload(isolate(data$CalibrationDO()))
+    table.spec$CalibrationpH$data.upload(isolate(data$CalibrationpH()))
   })
   
   # Handle events

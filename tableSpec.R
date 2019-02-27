@@ -44,26 +44,16 @@ insertInto <- function(table.name, data, pool) {
       cols <- paste(names(data), collapse = ", ")
       placeholders <- rep("?", length(names(data)))
       placeholders <- paste(placeholders, collapse = ", ")
-      sql.insert <- paste0("INSERT INTO ",
+      sql <- paste0("INSERT INTO ",
                     table.name,
                     " (", cols, ") ",
                     "VALUES (",
                     placeholders,
                     ")")
-      sql.verify <- paste0("SELECT * FROM ",
-                           table.name,
-                           " WHERE GUID IN (",
-                           paste0("'", data$GUID, "'", collapse = ", "),
-                           ")")
-      insert <- dbSendStatement(conn, sql.insert)
+      insert <- dbSendStatement(conn, sql)
       dbBind(insert, as.list(data))
+      dbGetRowsAffected(insert)
       dbClearResult(insert)
-      
-      verify <- dbSendQuery(conn, sql.verify)
-      rows.affected <- dbFetch(verify)
-      dbClearResult(verify)
-      
-      return(rows.affected)
     })
   }
 }
@@ -228,8 +218,7 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                         }),
                                         data.upload = function(data)({
                                           # Insert data into the CalibrationDO table
-                                          rows.affected <- insertInto("data.CalibrationDO", data, pool)
-                                          return(rows.affected)
+                                          insertInto("data.CalibrationDO", data, pool)
                                         })),
                    CalibrationpH = list(table.name = "CalibrationpH",
                                         display.name = "pH",
@@ -259,8 +248,7 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                         }),
                                         data.upload = function(data)({
                                           # Insert data into the CalibrationpH table
-                                          rows.affected <- insertInto("data.CalibrationpH", data, pool)
-                                          return(rows.affected)
+                                          insertInto("data.CalibrationpH", data, pool)
                                         })),
                    CalibrationSpCond = list(table.name = "CalibrationSpCond",
                                             display.name = "Specific Conductance",
@@ -287,7 +275,6 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                             }),
                                             data.upload = function(data)({
                                               # Insert data into the CalibrationSpCond table
-                                              rows.affected <- insertInto("data.CalibrationSpCond", data, pool)
-                                              return(rows.affected)
+                                              insertInto("data.CalibrationSpCond", data, pool)
                                             }))
 )
