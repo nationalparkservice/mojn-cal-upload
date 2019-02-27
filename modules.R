@@ -376,7 +376,7 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   
   # Rename fk columns 
   table.cols[which(table.cols$name %in% fk.cols), "name"] <- paste0(table.cols$name[which(table.cols$name %in% fk.cols)], "_lookup")
-
+  
   # Populate table
   output$data.view <- renderDT({
     data.in()
@@ -384,25 +384,25 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
     isolate({
       # only show data table if there are data to display
       if (nrow(data.in()) > 0) {
-  
-          for (col in fk.cols) {
-            lookup.tbl <- col.spec[[col]]$lookup  # get lookup table
-            lookup.pk <- col.spec[[col]]$lookup.pk  # primary key of lookup table
-            lookup.text <- col.spec[[col]]$lookup.text  # column in lookup table to display
-            
-            # Join data table to lookup table
-            data.view <- data.in() %>%
-              left_join(lookup.tbl, by = setNames(lookup.pk, col))
-            
-            # Rename display columns from lookups to something meaningful
-            data.view <- data.view %>%
-              setnames(old = lookup.text, new = paste0(col, "_lookup"))
-          }
+        
+        for (col in fk.cols) {
+          lookup.tbl <- col.spec[[col]]$lookup  # get lookup table
+          lookup.pk <- col.spec[[col]]$lookup.pk  # primary key of lookup table
+          lookup.text <- col.spec[[col]]$lookup.text  # column in lookup table to display
           
-          # Create the data table
-          data.view %>%
-            select(table.cols$name) %>%  # Only use columns where view = TRUE in the column spec
-            singleSelectDT(col.names = table.cols$label) # Use friendly labels from column spec as table headers
+          # Join data table to lookup table
+          data.view <- data.in() %>%
+            left_join(lookup.tbl, by = setNames(lookup.pk, col))
+          
+          # Rename display columns from lookups to something meaningful
+          data.view <- data.view %>%
+            setnames(old = lookup.text, new = paste0(col, "_lookup"))
+        }
+        
+        # Create the data table
+        data.view %>%
+          select(table.cols$name) %>%  # Only use columns where view = TRUE in the column spec
+          singleSelectDT(col.names = table.cols$label) # Use friendly labels from column spec as table headers
       }
     })
     
@@ -542,19 +542,19 @@ dataUpload <- function(input, output, session, data, upload.function) {
   #   A boolean value indicating whether data upload was successful
   
   observeEvent(input$submit, {
-      # Prompt user to confirm upload
-      showModal({
-        modalDialog(
-          h3("Confirm upload"),
-          p("You are about to upload data to the master database. Would you like to continue?"),
-          footer = tagList(
-            modalButton("No, not yet"),
-            actionButton(session$ns("conf.upload"), "Yes, upload the data!")
-          ),
-          easyClose = FALSE,
-          size = "m"
-        )
-      })
+    # Prompt user to confirm upload
+    showModal({
+      modalDialog(
+        h3("Confirm upload"),
+        p("You are about to upload data to the master database. Would you like to continue?"),
+        footer = tagList(
+          modalButton("No, not yet"),
+          actionButton(session$ns("conf.upload"), "Yes, upload the data!")
+        ),
+        easyClose = FALSE,
+        size = "m"
+      )
+    })
   })
   
   observeEvent(input$conf.upload, {
