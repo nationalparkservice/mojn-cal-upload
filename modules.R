@@ -524,7 +524,8 @@ dataUploadUI <- function(id) {
   ns <- NS(id)
   
   tagList(
-    actionButton(ns("submit"), "Submit data")
+    actionButton(ns("submit"), "Submit data"),
+    dataTableOutput(ns("uploaded.data"))
   )
   
 }
@@ -557,12 +558,12 @@ dataUpload <- function(input, output, session, data, upload.function) {
     })
   })
   
-  observeEvent(input$conf.upload, {
+  uploaded.data <- eventReactive(input$conf.upload, {
     # Attempt to append data to table in database
     tryCatch({
       # If successful, display success message
       # TODO: disable repeat uploads
-      upload.function(data)
+      uploaded.data <- upload.function(data)
       removeModal()
       showModal({
         modalDialog(
@@ -575,6 +576,7 @@ dataUpload <- function(input, output, session, data, upload.function) {
           size = "s"
         )
       })
+      uploaded.data
     },
     error = function(c) {
       # If unsuccessful, display error message
@@ -590,7 +592,6 @@ dataUpload <- function(input, output, session, data, upload.function) {
           size = "s"
         )
       })
-      return(FALSE)
     },
     warning = function(c) {
       showModal({
@@ -605,11 +606,14 @@ dataUpload <- function(input, output, session, data, upload.function) {
           size = "s"
         )
       })
-      return(FALSE)
     },
     message = function(c) {
       
     })
   })
-  return(TRUE)
+  
+  output$uploaded.data <- renderDataTable({
+    browser()
+    datatable(uploaded.data()$spcond)
+  })
 }
