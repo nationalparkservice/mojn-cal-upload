@@ -131,38 +131,38 @@ server <- function(input, output, session) {
   
   # Advance from import screen to review screen
   onclick("btn.next.review", {
-    hide("next.review")
-    hide("import.card")
-    show("review.card")
-    show("next.upload")
-    show("back.import")
+    shinyjs::hide("next.review")
+    shinyjs::hide("import.card")
+    shinyjs::show("review.card")
+    shinyjs::show("next.upload")
+    shinyjs::show("back.import")
   })
   
   # Advance from review screen to upload screen
   onclick("btn.next.upload", {
-    hide("next.upload")
-    hide("back.import")
-    hide("review.card")
-    show("upload.card")
-    show("back.review")
+    shinyjs::hide("next.upload")
+    shinyjs::hide("back.import")
+    shinyjs::hide("review.card")
+    shinyjs::show("upload.card")
+    shinyjs::show("back.review")
   })
   
   # Go back to review screen from upload screen
   onclick("btn.back.review", {
-    hide("upload.card")
-    hide("back.review")
-    show("next.upload")
-    show("back.import")
-    show("review.card")
+    shinyjs::hide("upload.card")
+    shinyjs::hide("back.review")
+    shinyjs::show("next.upload")
+    shinyjs::show("back.import")
+    shinyjs::show("review.card")
   })
   
   # Go back to import screen from review screen
   onclick("btn.back.import", {
-    hide("review.card")
-    hide("next.upload")
-    hide("back.import")
-    show("next.review")
-    show("import.card")
+    shinyjs::hide("review.card")
+    shinyjs::hide("next.upload")
+    shinyjs::hide("back.import")
+    shinyjs::show("next.review")
+    shinyjs::show("import.card")
   })
 }
 

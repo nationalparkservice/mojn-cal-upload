@@ -164,10 +164,14 @@ fileImportInput <- function(id) {
   
   ns <- NS(id)
   
-  fileInput(ns("files.in"), "Select data files to upload",
-            multiple = TRUE,
-            accept = ".csv")
-  
+  tagList(
+    useShinyjs(),
+    fileInput(ns("files.in"), "Select data files to upload",
+              multiple = TRUE,
+              accept = ".csv"),
+    hidden(h4("Import Summary", id = ns("import.summary"))),
+    dataTableOutput(ns("data.imported"))
+  )
 }
 
 
@@ -186,6 +190,7 @@ fileImport <- function(input, output, session, table.spec) {
   #   A list containing the data read from the input files. Note that duplicate rows will be removed.
   
   data <- list()
+  imports <- list()
   
   # Get list of imported files
   data.files <- reactive({
@@ -195,7 +200,7 @@ fileImport <- function(input, output, session, table.spec) {
   })
   
   # When new files are uploaded, populate data.imports
-  data.imports <- eventReactive(data.files(), {
+  all.data <- eventReactive(data.files(), {
     for (tbl in table.spec) {
       data.in <- readFiles(data.files()$datapath,
                            data.files()$name,
@@ -206,8 +211,104 @@ fileImport <- function(input, output, session, table.spec) {
     data
   })
   
-  return(data.imports)
+  # Figure out which, if any, records are already present in the database
+  existing.SpCond <- reactive({
+    
+    if (nrow(all.data()$CalibrationSpCond > 0)) {
+      db.SpCond %>%
+        filter(GUID %in% all.data()$CalibrationSpCond$GUID) %>%
+        collect() 
+    } else {
+      db.SpCond %>%
+        filter(GUID != GUID) %>%
+        collect() 
+    }
+    
+  })
   
+  existing.DO <- reactive({
+    if (nrow(all.data()$CalibrationDO > 0)) {
+      db.DO %>%
+        filter(GUID %in% all.data()$CalibrationDO$GUID) %>%
+        collect() 
+    } else {
+      db.DO %>%
+        filter(GUID != GUID) %>%
+        collect() 
+    }
+  })
+  
+  existing.pH <- reactive({
+    if (nrow(all.data()$CalibrationpH > 0)) {
+      db.pH %>%
+        filter(GUID %in% all.data()$CalibrationpH$GUID) %>%
+        collect() 
+    } else {
+      db.pH %>%
+        filter(GUID != GUID) %>%
+        collect() 
+    }
+  })
+  
+  # Omit any data already in the database
+  data.imports <- reactive({
+    imports$CalibrationSpCond <- all.data()$CalibrationSpCond %>%
+      filter(!(GUID %in% existing.SpCond()$GUID))
+    
+    imports$CalibrationDO <- all.data()$CalibrationDO %>%
+      filter(!(GUID %in% existing.DO()$GUID))
+    
+    imports$CalibrationpH <- all.data()$CalibrationpH %>%
+      filter(!(GUID %in% existing.pH()$GUID))
+    
+    imports
+  })
+  
+  importStatusText <- function(count, record.type = "imported") {
+    if (count == 0) {
+      if (record.type == "imported") {
+        txt <- "No calibrations imported."
+      } else {
+        txt <- ""
+      }
+    } else if (record.type == "ignored") {
+      txt <- paste(count, "calibration(s) were omitted because they are already in the database.", sep = " ")
+    } else if (record.type == "imported") {
+      txt <- paste("Imported", count, "calibration(s).", sep = " ")
+    }
+    return(txt)
+  }
+  
+  vImportStatusText <- Vectorize(importStatusText, "count")
+  
+  output$data.imported <- renderDataTable({
+    
+    spcond.count <- nrow(data.imports()$CalibrationSpCond)
+    do.count <- nrow(data.imports()$CalibrationDO)
+    ph.count <- nrow(data.imports()$CalibrationpH)
+    
+    spcond.ignored.count <- nrow(existing.SpCond())
+    do.ignored.count <- nrow(existing.DO())
+    ph.ignored.count <- nrow(existing.pH())
+    
+    summary <- data_frame(metric = c("Specific Conductance", "Dissolved Oxygen", "pH"),
+                          import.count = c(spcond.count, do.count, ph.count),
+                          ignored.count = c(spcond.ignored.count, do.ignored.count, ph.ignored.count))
+
+    summary <- summary %>%
+      mutate(import.message = paste(vImportStatusText(import.count), 
+                                    vImportStatusText(ignored.count, record.type = "ignored"), 
+                                    sep = " ")) %>%
+      select(metric, import.message)
+
+    datatable(summary, rownames = FALSE, colnames = "", options = list(dom = "b", ordering = F))
+  })
+  
+  observeEvent(data.imports(), {
+    shinyjs::show("import.summary")
+  })
+  
+  return(data.imports)
 }
 
 
@@ -275,7 +376,7 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   
   # Rename fk columns 
   table.cols[which(table.cols$name %in% fk.cols), "name"] <- paste0(table.cols$name[which(table.cols$name %in% fk.cols)], "_lookup")
-
+  
   # Populate table
   output$data.view <- renderDT({
     data.in()
@@ -283,25 +384,25 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
     isolate({
       # only show data table if there are data to display
       if (nrow(data.in()) > 0) {
-  
-          for (col in fk.cols) {
-            lookup.tbl <- col.spec[[col]]$lookup  # get lookup table
-            lookup.pk <- col.spec[[col]]$lookup.pk  # primary key of lookup table
-            lookup.text <- col.spec[[col]]$lookup.text  # column in lookup table to display
-            
-            # Join data table to lookup table
-            data.view <- data.in() %>%
-              left_join(lookup.tbl, by = setNames(lookup.pk, col))
-            
-            # Rename display columns from lookups to something meaningful
-            data.view <- data.view %>%
-              setnames(old = lookup.text, new = paste0(col, "_lookup"))
-          }
+        
+        for (col in fk.cols) {
+          lookup.tbl <- col.spec[[col]]$lookup  # get lookup table
+          lookup.pk <- col.spec[[col]]$lookup.pk  # primary key of lookup table
+          lookup.text <- col.spec[[col]]$lookup.text  # column in lookup table to display
           
-          # Create the data table
-          data.view %>%
-            select(table.cols$name) %>%  # Only use columns where view = TRUE in the column spec
-            singleSelectDT(col.names = table.cols$label) # Use friendly labels from column spec as table headers
+          # Join data table to lookup table
+          data.view <- data.in() %>%
+            left_join(lookup.tbl, by = setNames(lookup.pk, col))
+          
+          # Rename display columns from lookups to something meaningful
+          data.view <- data.view %>%
+            setnames(old = lookup.text, new = paste0(col, "_lookup"))
+        }
+        
+        # Create the data table
+        data.view %>%
+          select(table.cols$name) %>%  # Only use columns where view = TRUE in the column spec
+          singleSelectDT(col.names = table.cols$label) # Use friendly labels from column spec as table headers
       }
     })
     
@@ -441,19 +542,19 @@ dataUpload <- function(input, output, session, data, upload.function) {
   #   A boolean value indicating whether data upload was successful
   
   observeEvent(input$submit, {
-      # Prompt user to confirm upload
-      showModal({
-        modalDialog(
-          h3("Confirm upload"),
-          p("You are about to upload data to the master database. Would you like to continue?"),
-          footer = tagList(
-            modalButton("No, not yet"),
-            actionButton(session$ns("conf.upload"), "Yes, upload the data!")
-          ),
-          easyClose = FALSE,
-          size = "m"
-        )
-      })
+    # Prompt user to confirm upload
+    showModal({
+      modalDialog(
+        h3("Confirm upload"),
+        p("You are about to upload data to the master database. Would you like to continue?"),
+        footer = tagList(
+          modalButton("No, not yet"),
+          actionButton(session$ns("conf.upload"), "Yes, upload the data!")
+        ),
+        easyClose = FALSE,
+        size = "m"
+      )
+    })
   })
   
   observeEvent(input$conf.upload, {
