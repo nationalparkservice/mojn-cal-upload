@@ -164,10 +164,14 @@ fileImportInput <- function(id) {
   
   ns <- NS(id)
   
-  fileInput(ns("files.in"), "Select data files to upload",
-            multiple = TRUE,
-            accept = ".csv")
-  
+  tagList(
+    useShinyjs(),
+    fileInput(ns("files.in"), "Select data files to upload",
+              multiple = TRUE,
+              accept = ".csv"),
+    hidden(h4("Import Summary", id = ns("import.summary"))),
+    dataTableOutput(ns("data.imported"))
+  )
 }
 
 
@@ -209,26 +213,45 @@ fileImport <- function(input, output, session, table.spec) {
   
   # Figure out which, if any, records are already present in the database
   existing.SpCond <- reactive({
-    db.SpCond %>%
-      filter(GUID %in% all.data()$CalibrationSpCond$GUID) %>%
-      collect()
+    
+    if (nrow(all.data()$CalibrationSpCond > 0)) {
+      db.SpCond %>%
+        filter(GUID %in% all.data()$CalibrationSpCond$GUID) %>%
+        collect() 
+    } else {
+      db.SpCond %>%
+        filter(GUID != GUID) %>%
+        collect() 
+    }
+    
   })
   
   existing.DO <- reactive({
-    db.DO %>%
-      filter(GUID %in% all.data()$CalibrationDO$GUID) %>%
-      collect()
+    if (nrow(all.data()$CalibrationDO > 0)) {
+      db.DO %>%
+        filter(GUID %in% all.data()$CalibrationDO$GUID) %>%
+        collect() 
+    } else {
+      db.DO %>%
+        filter(GUID != GUID) %>%
+        collect() 
+    }
   })
   
   existing.pH <- reactive({
-    db.pH %>%
-      filter(GUID %in% all.data()$CalibrationpH$GUID) %>%
-      collect()
+    if (nrow(all.data()$CalibrationpH > 0)) {
+      db.pH %>%
+        filter(GUID %in% all.data()$CalibrationpH$GUID) %>%
+        collect() 
+    } else {
+      db.pH %>%
+        filter(GUID != GUID) %>%
+        collect() 
+    }
   })
   
   # Omit any data already in the database
   data.imports <- reactive({
-    browser()
     imports$CalibrationSpCond <- all.data()$CalibrationSpCond %>%
       filter(!(GUID %in% existing.SpCond()$GUID))
     
@@ -239,7 +262,50 @@ fileImport <- function(input, output, session, table.spec) {
       filter(!(GUID %in% existing.pH()$GUID))
     
     imports
+  })
+  
+  importStatusText <- function(count, record.type = "imported") {
+    if (count == 0) {
+      if (record.type == "imported") {
+        txt <- "No calibrations imported."
+      } else {
+        txt <- ""
+      }
+    } else if (record.type == "ignored") {
+      txt <- paste(count, "calibration(s) were omitted because they are already in the database.", sep = " ")
+    } else if (record.type == "imported") {
+      txt <- paste("Imported", count, "calibration(s).", sep = " ")
+    }
+    return(txt)
+  }
+  
+  vImportStatusText <- Vectorize(importStatusText, "count")
+  
+  output$data.imported <- renderDataTable({
     
+    spcond.count <- nrow(data.imports()$CalibrationSpCond)
+    do.count <- nrow(data.imports()$CalibrationDO)
+    ph.count <- nrow(data.imports()$CalibrationpH)
+    
+    spcond.ignored.count <- nrow(existing.SpCond())
+    do.ignored.count <- nrow(existing.DO())
+    ph.ignored.count <- nrow(existing.pH())
+    
+    summary <- data_frame(metric = c("Specific Conductance", "Dissolved Oxygen", "pH"),
+                          import.count = c(spcond.count, do.count, ph.count),
+                          ignored.count = c(spcond.ignored.count, do.ignored.count, ph.ignored.count))
+
+    summary <- summary %>%
+      mutate(import.message = paste(vImportStatusText(import.count), 
+                                    vImportStatusText(ignored.count, record.type = "ignored"), 
+                                    sep = " ")) %>%
+      select(metric, import.message)
+
+    datatable(summary, rownames = FALSE, colnames = "", options = list(dom = "b", ordering = F))
+  })
+  
+  observeEvent(data.imports(), {
+    shinyjs::show("import.summary")
   })
   
   return(data.imports)
