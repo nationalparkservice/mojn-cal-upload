@@ -35,14 +35,14 @@ ui <- tagList(
                                             tags$div(class = "panel-body",
                                                      fluidRow(
                                                        column(10, offset = 1,
-                                                              tabsetPanel(type = "pills",
-                                                                          tabPanel("SpCond",
+                                                              tabsetPanel(id = "review.tabs", type = "pills",
+                                                                          tabPanel("Specific Conductance", id = "spcond.tab",
                                                                                    dataViewAndEditUI("CalibrationSpCond")
                                                                           ),
-                                                                          tabPanel("DO",
+                                                                          tabPanel("Dissolved Oxygen", id = "do.tab",
                                                                                    dataViewAndEditUI("CalibrationDO")
                                                                           ),
-                                                                          tabPanel("pH",
+                                                                          tabPanel("pH", id = "ph.tab",
                                                                                    dataViewAndEditUI("CalibrationpH")
                                                                           )
                                                               )
@@ -100,20 +100,25 @@ server <- function(input, output, session) {
   observeEvent(calib.data(), {
     
     data.exist <- FALSE
+    tabs.to.show <- c()
     
     # Check if data were imported
     if (nrow(calib.data()$CalibrationSpCond) > 0) {
+      tabs.to.show <- c(tabs.to.show, "Specific Conductance")
       data.exist <- TRUE
     }
     
     if (nrow(calib.data()$CalibrationDO) > 0) {
+      tabs.to.show <- c(tabs.to.show, "Dissolved Oxygen")
       data.exist <- TRUE
     }
     
     if (nrow(calib.data()$CalibrationpH) > 0) {
+      tabs.to.show <- c(tabs.to.show, "pH")
       data.exist <- TRUE
     }
     
+    tabs.to.hide <- setdiff(c("Specific Conductance", "Dissolved Oxygen", "pH"), tabs.to.show)
     
     if (data.exist) {
       # Enable next button if data were imported
@@ -125,6 +130,12 @@ server <- function(input, output, session) {
         shinyjs::show("review.card")
         shinyjs::show("next.upload")
         shinyjs::show("back.import")
+        for (tab in tabs.to.show) {
+          showTab("review.tabs", tab)
+        }
+        for (tab in tabs.to.hide) {
+          hideTab("review.tabs", tab)
+        }
       })
     } else {
       # Disable next button if no data imported
