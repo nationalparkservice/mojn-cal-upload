@@ -66,8 +66,8 @@ ui <- tagList(
                                  # Pager buttons for toggling between cards
                                  tags$nav(
                                    tags$ul(class = "pager",
-                                           tags$li(id = "next.review", class = "next",
-                                                   tags$a(id = "btn.next.review", href = "#", "Review Data")),
+                                           disabled(tags$li(id = "next.review", class = "next",
+                                                   tags$a(id = "btn.next.review", href = "#", "Review Data"))),
                                            hidden(
                                              tags$li(id = "next.upload", class = "next",
                                                      tags$a(id = "btn.next.upload", href = "#", "Upload Data"))),
@@ -93,9 +93,48 @@ ui <- tagList(
 # Define server logic
 server <- function(input, output, session) {
   
-  # Get new data from uploaded files
-  # TODO: Omit data that are already in the database
+  # Get new data from imported files
   calib.data <- callModule(fileImport, "import.data", table.spec)
+  
+  # Disable next button if no data imported
+  observeEvent(calib.data(), {
+    
+    data.exist <- FALSE
+    
+    # Check if data were imported
+    if (nrow(calib.data()$CalibrationSpCond) > 0) {
+      data.exist <- TRUE
+    }
+    
+    if (nrow(calib.data()$CalibrationDO) > 0) {
+      data.exist <- TRUE
+    }
+    
+    if (nrow(calib.data()$CalibrationpH) > 0) {
+      data.exist <- TRUE
+    }
+    
+    
+    if (data.exist) {
+      # Enable next button if data were imported
+      shinyjs::enable("next.review")
+      # Advance from import screen to review screen on next button click
+      onclick("btn.next.review", {
+        shinyjs::hide("next.review")
+        shinyjs::hide("import.card")
+        shinyjs::show("review.card")
+        shinyjs::show("next.upload")
+        shinyjs::show("back.import")
+      })
+    } else {
+      # Disable next button if no data imported
+      shinyjs::disable("next.review")
+      # Do nothing when disabled button is clicked
+      onclick("btn.next.review", {
+        
+      })
+    }
+  })
   
   # Initialize reactiveValues object to store final reviewed/edited data
   final.data <- reactiveValues()
@@ -128,15 +167,6 @@ server <- function(input, output, session) {
   })
   
   # Handle events
-  
-  # Advance from import screen to review screen
-  onclick("btn.next.review", {
-    shinyjs::hide("next.review")
-    shinyjs::hide("import.card")
-    shinyjs::show("review.card")
-    shinyjs::show("next.upload")
-    shinyjs::show("back.import")
-  })
   
   # Advance from review screen to upload screen
   onclick("btn.next.upload", {
