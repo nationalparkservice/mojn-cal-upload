@@ -524,7 +524,9 @@ dataUploadUI <- function(id) {
   ns <- NS(id)
   
   tagList(
-    actionButton(ns("submit"), "Submit data")
+    useShinyjs(),
+    actionButton(ns("submit"), "Submit data"),
+    hidden(h4(id = ns("submit.success.msg"), "Success!"))
   )
   
 }
@@ -560,9 +562,8 @@ dataUpload <- function(input, output, session, data, upload.function) {
   observeEvent(input$conf.upload, {
     # Attempt to append data to table in database
     tryCatch({
-      # If successful, display success message
-      # TODO: disable repeat uploads
       upload.function(data)
+      # If successful, display success message
       removeModal()
       showModal({
         modalDialog(
@@ -575,6 +576,9 @@ dataUpload <- function(input, output, session, data, upload.function) {
           size = "s"
         )
       })
+      # Disable submit button after successful upload
+      shinyjs::disable("submit")
+      shinyjs::show("submit.success.msg")
     },
     error = function(c) {
       # If unsuccessful, display error message
@@ -590,7 +594,6 @@ dataUpload <- function(input, output, session, data, upload.function) {
           size = "s"
         )
       })
-      return(FALSE)
     },
     warning = function(c) {
       showModal({
@@ -605,11 +608,11 @@ dataUpload <- function(input, output, session, data, upload.function) {
           size = "s"
         )
       })
-      return(FALSE)
     },
     message = function(c) {
       
     })
   })
-  return(TRUE)
+  
+  
 }
