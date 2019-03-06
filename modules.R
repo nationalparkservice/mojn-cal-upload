@@ -542,7 +542,7 @@ dataUpload <- function(input, output, session, data, upload.function) {
   #
   # Returns:
   #   A boolean value indicating whether data upload was successful
-  
+
   observeEvent(input$submit, {
     # Prompt user to confirm upload
     showModal({
@@ -559,8 +559,9 @@ dataUpload <- function(input, output, session, data, upload.function) {
     })
   })
   
-  observeEvent(input$conf.upload, {
+  upload.success <- eventReactive(input$conf.upload, {
     # Attempt to append data to table in database
+    success <- FALSE
     tryCatch({
       upload.function(data)
       # If successful, display success message
@@ -579,6 +580,7 @@ dataUpload <- function(input, output, session, data, upload.function) {
       # Disable submit button after successful upload
       shinyjs::disable("submit")
       shinyjs::show("submit.success.msg")
+      success <- TRUE
     },
     error = function(c) {
       # If unsuccessful, display error message
@@ -612,7 +614,7 @@ dataUpload <- function(input, output, session, data, upload.function) {
     message = function(c) {
       
     })
+    success
   })
-  
-  
+  return(upload.success)
 }
