@@ -72,11 +72,17 @@ ui <- tagList(
                                              tags$li(id = "next.upload", class = "next",
                                                      tags$a(id = "btn.next.upload", href = "#", "Upload Data"))),
                                            hidden(
+                                             tags$li(id = "next.done", class = "next",
+                                                     tags$a(id = "btn.next.done", href = "#", "Done"))),
+                                           hidden(
                                              tags$li(id = "back.import", class = "previous",
                                                      tags$a(id = "btn.back.import", href = "#", "Back to Import"))),
                                            hidden(
                                              tags$li(id = "back.review", class = "previous",
-                                                     tags$a(id = "btn.back.review", href = "#", "Back to Data Review")))
+                                                     tags$a(id = "btn.back.review", href = "#", "Back to Data Review"))),
+                                           hidden(
+                                             tags$li(id = "back.startover", class = "previous",
+                                                     tags$a(id = "btn.back.startover", href = "#", "Import More Data")))
                                    )
                                  )
                           )
@@ -141,9 +147,7 @@ server <- function(input, output, session) {
       # Disable next button if no data imported
       shinyjs::disable("next.review")
       # Do nothing when disabled button is clicked
-      onclick("btn.next.review", {
-        
-      })
+      onclick("btn.next.review", {})
     }
   })
   
@@ -171,13 +175,22 @@ server <- function(input, output, session) {
   })
   
   # Call the data upload module
-  callModule(dataUpload, id = "data.upload", data = final.data, upload.function = function(data){
+  upload.success <- callModule(dataUpload, id = "data.upload", data = final.data, upload.function = function(data){
     table.spec$CalibrationSpCond$data.upload(isolate(data$CalibrationSpCond()))
     table.spec$CalibrationDO$data.upload(isolate(data$CalibrationDO()))
     table.spec$CalibrationpH$data.upload(isolate(data$CalibrationpH()))
   })
   
   # Handle events
+  
+  observeEvent(upload.success(), {
+    if (upload.success()) {
+      # Show "done" and "import more" buttons
+      shinyjs::show("next.done")
+      shinyjs::show("back.startover")
+      shinyjs::hide("back.review")
+    }
+  })
   
   # Advance from review screen to upload screen
   onclick("btn.next.upload", {
@@ -202,6 +215,25 @@ server <- function(input, output, session) {
     shinyjs::hide("review.card")
     shinyjs::hide("next.upload")
     shinyjs::hide("back.import")
+    shinyjs::show("next.review")
+    shinyjs::show("import.card")
+  })
+  
+  # Go back to import screen after data have been uploaded to database
+  onclick("btn.back.startover", {
+    shinyjs::hide("upload.card")
+    shinyjs::hide("back.startover")
+    shinyjs::hide("next.done")
+    shinyjs::show("next.review")
+    shinyjs::show("import.card")
+  })
+  
+  # Go back to home screen after data have been uploaded to database
+  onclick("btn.next.done", {
+    shinyjs::hide("upload.card")
+    shinyjs::hide("back.startover")
+    shinyjs::hide("next.done")
+    # TODO: When data browser (or home screen with instructions?) is implemented, go there instead
     shinyjs::show("next.review")
     shinyjs::show("import.card")
   })
