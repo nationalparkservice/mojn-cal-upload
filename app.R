@@ -24,7 +24,11 @@ ui <- tagList(
                                           tags$div(class = "panel-body",
                                                    fluidRow(
                                                      column(12, align = "center",
-                                                            fileImportInput("import.data")
+                                                            fileInput("files.in", "Select data files to upload",
+                                                                      multiple = TRUE,
+                                                                      accept = ".csv"),
+                                                            hidden(h4("Import Summary", id = "import.summary")),
+                                                            dataTableOutput("data.imported")
                                                      )
                                                    )
                                           )
@@ -67,7 +71,7 @@ ui <- tagList(
                                  tags$nav(
                                    tags$ul(class = "pager",
                                            disabled(tags$li(id = "next.review", class = "next",
-                                                   tags$a(id = "btn.next.review", href = "#", "Review Data"))),
+                                                            tags$a(id = "btn.next.review", href = "#", "Review Data"))),
                                            hidden(
                                              tags$li(id = "next.upload", class = "next",
                                                      tags$a(id = "btn.next.upload", href = "#", "Upload Data"))),
@@ -98,28 +102,153 @@ ui <- tagList(
 
 # Define server logic
 server <- function(input, output, session) {
+  # output$file.import.ui <- renderUI(
+  #   fileImportInput("import.data")
+  # )
+  # 
+  # # Get new data from imported files
+  # data.imports <- callModule(fileImport, "import.data", table.spec)
   
-  # Get new data from imported files
-  calib.data <- callModule(fileImport, "import.data", table.spec)
+  ### Import data ###
+  data <- list()
+  imports <- list()
+  data.files <- reactiveVal()
+  
+  # Get list of imported files
+  observeEvent(input$files.in, {
+    # Do nothing if no files present
+    validate(need(input$files.in, message = FALSE))
+    data.files(input$files.in)
+  })
+  
+  # Get data from uploaded files
+  all.data <- eventReactive(data.files(), {
+    for (tbl in table.spec) {
+      data.in <- readFiles(data.files()$datapath,
+                           data.files()$name,
+                           tbl$search.string,
+                           col.types = tbl$col.types)
+      data[[tbl$table.name]] <- data.in
+    }
+    data
+  })
+  
+  # Figure out which, if any, records are already present in the database
+  existing.SpCond <- reactive({
+    
+    if (nrow(all.data()$CalibrationSpCond > 0)) {
+      db.SpCond %>%
+        filter(GUID %in% all.data()$CalibrationSpCond$GUID) %>%
+        collect() 
+    } else {
+      db.SpCond %>%
+        filter(GUID != GUID) %>%
+        collect() 
+    }
+    
+  })
+  
+  existing.DO <- reactive({
+    if (nrow(all.data()$CalibrationDO > 0)) {
+      db.DO %>%
+        filter(GUID %in% all.data()$CalibrationDO$GUID) %>%
+        collect() 
+    } else {
+      db.DO %>%
+        filter(GUID != GUID) %>%
+        collect() 
+    }
+  })
+  
+  existing.pH <- reactive({
+    if (nrow(all.data()$CalibrationpH > 0)) {
+      db.pH %>%
+        filter(GUID %in% all.data()$CalibrationpH$GUID) %>%
+        collect() 
+    } else {
+      db.pH %>%
+        filter(GUID != GUID) %>%
+        collect() 
+    }
+  })
+  
+  # Omit any data already in the database
+  data.imports <- reactive({
+    imports$CalibrationSpCond <- all.data()$CalibrationSpCond %>%
+      filter(!(GUID %in% existing.SpCond()$GUID))
+    
+    imports$CalibrationDO <- all.data()$CalibrationDO %>%
+      filter(!(GUID %in% existing.DO()$GUID))
+    
+    imports$CalibrationpH <- all.data()$CalibrationpH %>%
+      filter(!(GUID %in% existing.pH()$GUID))
+    
+    imports
+  })
+  
+  importStatusText <- function(count, record.type = "imported") {
+    if (count == 0) {
+      if (record.type == "imported") {
+        txt <- "No calibrations imported."
+      } else {
+        txt <- ""
+      }
+    } else if (record.type == "ignored") {
+      txt <- paste(count, "calibration(s) were omitted because they are already in the database.", sep = " ")
+    } else if (record.type == "imported") {
+      txt <- paste("Imported", count, "calibration(s).", sep = " ")
+    }
+    return(txt)
+  }
+  
+  vImportStatusText <- Vectorize(importStatusText, "count")
+  
+  output$data.imported <- renderDataTable({
+    
+    spcond.count <- nrow(data.imports()$CalibrationSpCond)
+    do.count <- nrow(data.imports()$CalibrationDO)
+    ph.count <- nrow(data.imports()$CalibrationpH)
+    
+    spcond.ignored.count <- nrow(existing.SpCond())
+    do.ignored.count <- nrow(existing.DO())
+    ph.ignored.count <- nrow(existing.pH())
+    
+    summary <- data_frame(metric = c("Specific Conductance", "Dissolved Oxygen", "pH"),
+                          import.count = c(spcond.count, do.count, ph.count),
+                          ignored.count = c(spcond.ignored.count, do.ignored.count, ph.ignored.count))
+    
+    summary <- summary %>%
+      mutate(import.message = paste(vImportStatusText(import.count), 
+                                    vImportStatusText(ignored.count, record.type = "ignored"), 
+                                    sep = " ")) %>%
+      select(metric, import.message)
+    
+    datatable(summary, rownames = FALSE, colnames = "", options = list(dom = "b", ordering = F))
+  })
+  
+  observeEvent(data.imports(), {
+    shinyjs::show("import.summary")
+    shinyjs::show("data.imported")
+  })
   
   # Disable next button if no data imported
-  observeEvent(calib.data(), {
+  observeEvent(data.imports(), {
     
     data.exist <- FALSE
     tabs.to.show <- c()
     
     # Check if data were imported
-    if (nrow(calib.data()$CalibrationSpCond) > 0) {
+    if (nrow(data.imports()$CalibrationSpCond) > 0) {
       tabs.to.show <- c(tabs.to.show, "Specific Conductance")
       data.exist <- TRUE
     }
     
-    if (nrow(calib.data()$CalibrationDO) > 0) {
+    if (nrow(data.imports()$CalibrationDO) > 0) {
       tabs.to.show <- c(tabs.to.show, "Dissolved Oxygen")
       data.exist <- TRUE
     }
     
-    if (nrow(calib.data()$CalibrationpH) > 0) {
+    if (nrow(data.imports()$CalibrationpH) > 0) {
       tabs.to.show <- c(tabs.to.show, "pH")
       data.exist <- TRUE
     }
@@ -159,8 +288,8 @@ server <- function(input, output, session) {
     clean.data <- list()
     for (table in table.spec) {
       # Clean up data, if present
-      if (nrow(calib.data()[[table$table.name]]) > 0) {
-        clean.data[[table$table.name]] <- calib.data()[[table$table.name]] %>% table$data.manip()
+      if (nrow(data.imports()[[table$table.name]]) > 0) {
+        clean.data[[table$table.name]] <- data.imports()[[table$table.name]] %>% table$data.manip()
       } else {
         clean.data[[table$table.name]] <- data_frame()
       }
@@ -189,6 +318,12 @@ server <- function(input, output, session) {
       shinyjs::show("next.done")
       shinyjs::show("back.startover")
       shinyjs::hide("back.review")
+      shinyjs::disable("next.review")
+      # Reset file import
+      data.files(NULL)
+      reset("files.in")
+      shinyjs::hide("import.summary")
+      shinyjs::hide("data.imported")
     }
   })
   
