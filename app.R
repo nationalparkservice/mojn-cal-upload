@@ -61,7 +61,8 @@ ui <- tagList(
                                             tags$div(class = "panel-body",
                                                      fluidRow(
                                                        column(12, align = "center",
-                                                              dataUploadUI("data.upload")
+                                                              actionButton("submit", "Submit data"),
+                                                              hidden(h4(id = "submit.success.msg", "Success!"))
                                                        )
                                                      )
                                             )
@@ -303,15 +304,86 @@ server <- function(input, output, session) {
     final.data$CalibrationpH <- callModule(dataViewAndEdit, id = "CalibrationpH", data = clean.data()$CalibrationpH, col.spec = table.spec$CalibrationpH$col.spec) 
   })
   
-  # Call the data upload module
-  upload.success <- callModule(dataUpload, id = "data.upload", data = final.data, upload.function = function(data){
-    table.spec$CalibrationSpCond$data.upload(isolate(data$CalibrationSpCond()))
-    table.spec$CalibrationDO$data.upload(isolate(data$CalibrationDO()))
-    table.spec$CalibrationpH$data.upload(isolate(data$CalibrationpH()))
+  # Data upload
+  observeEvent(input$submit, {
+    # Prompt user to confirm upload
+    showModal({
+      modalDialog(
+        h3("Confirm upload"),
+        p("You are about to upload data to the master database. Would you like to continue?"),
+        footer = tagList(
+          modalButton("No, not yet"),
+          actionButton(session$ns("conf.upload"), "Yes, upload the data!")
+        ),
+        easyClose = FALSE,
+        size = "m"
+      )
+    })
   })
   
+  upload.success <- eventReactive(input$conf.upload, {
+    # Attempt to append data to table in database
+    success <- FALSE
+    tryCatch({
+      table.spec$CalibrationSpCond$data.upload(isolate(final.data$CalibrationSpCond()))
+      table.spec$CalibrationDO$data.upload(isolate(final.data$CalibrationDO()))
+      table.spec$CalibrationpH$data.upload(isolate(final.data$CalibrationpH()))
+      
+      # If successful, display success message
+      removeModal()
+      showModal({
+        modalDialog(
+          h3("Upload success"),
+          p("Successful data upload"),
+          footer = tagList(
+            modalButton("Ok")
+          ),
+          easyClose = FALSE,
+          size = "s"
+        )
+      })
+      # Disable submit button after successful upload
+      shinyjs::disable("submit")
+      shinyjs::show("submit.success.msg")
+      success <- TRUE
+    },
+    error = function(c) {
+      # If unsuccessful, display error message
+      showModal({
+        modalDialog(
+          h3("Upload error"),
+          p("There was an error uploading the data."),
+          p(paste0("Error message: ", c)),
+          footer = tagList(
+            modalButton("Ok")
+          ),
+          easyClose = FALSE,
+          size = "s"
+        )
+      })
+    },
+    warning = function(c) {
+      showModal({
+        modalDialog(
+          h3("Upload warning"),
+          p("There was an error uploading the data."),
+          p(paste0("Warning message: ", c)),
+          footer = tagList(
+            modalButton("Ok")
+          ),
+          easyClose = FALSE,
+          size = "s"
+        )
+      })
+    },
+    message = function(c) {
+      
+    })
+    success
+  })
+
+    
   # Handle events
-  
   observeEvent(upload.success(), {
     if (upload.success()) {
       # Show "done" and "import more" buttons
