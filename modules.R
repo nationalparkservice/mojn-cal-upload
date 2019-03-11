@@ -77,6 +77,7 @@ makeEditBoxes <- function(session, edit.cols, col.spec) {
   
   # Initialize edit box list.
   edit.boxes <- vector(mode = "list", length = nrow(edit.cols))
+  edit.box.cols <- vector(mode = "list", length = ceiling(nrow(edit.cols)/5))
   
   for (row in 1:nrow(edit.cols)) {
     col <- edit.cols[row,]
@@ -104,16 +105,25 @@ makeEditBoxes <- function(session, edit.cols, col.spec) {
                                                choices = c("", options),
                                                selected = NA))
     }
+    if (row == ceiling(nrow(edit.cols) / 2)) {
+      edit.box.cols[1] <- list(column(6, edit.boxes))
+      edit.boxes <- vector(mode = "list", length = nrow(edit.cols))
+    } else if (row == nrow(edit.cols)){
+      edit.box.cols[2] <- list(column(6, edit.boxes))
+    }
   }
   
   # Convert edit boxes to tag list and add cancel/save/delete buttons
-  edit.boxes <- tagList(edit.boxes)
+  edit.box.cols <- tagList(fluidRow(edit.box.cols))
   delete.button <- actionButton(session$ns("delete"), "Delete")
   cancel.button <- actionButton(session$ns("cancel"), "Cancel")
   save.button <- actionButton(session$ns("save"), "Save")
-  edit.boxes <- tagAppendChildren(edit.boxes, delete.button, cancel.button, save.button)
+  buttons <- tagList(fluidRow(
+    column(12, align = "center", delete.button, cancel.button, save.button)
+  ))
+  edit.box.cols <- tagList(edit.box.cols, buttons)
   
-  return(edit.boxes)
+  return(edit.box.cols)
 }
 
 updateEditBoxes <- function(session, edit.cols, row.selected, data) {
