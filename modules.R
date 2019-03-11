@@ -50,6 +50,7 @@ singleSelectDT <- function (data, col.names) {
     colnames = col.names
     options = list(
       order = sort,
+      dom = 't'
     )
   )
 }
