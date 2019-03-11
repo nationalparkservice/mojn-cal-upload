@@ -40,11 +40,17 @@ singleSelectDT <- function (data, col.names) {
   #
   # Returns:
   #   A DT datatable with single-row selection enabled
-  
+  sort <- list(list(0, "asc"))
+  for (i in 1:(length(col.names)-1)) {
+    sort <- append(sort, list(list(i, "asc")))
+  }
   datatable(data, selection = list(
     mode = "single",
     target = "row"),
     colnames = col.names
+    options = list(
+      order = sort,
+    )
   )
 }
 
