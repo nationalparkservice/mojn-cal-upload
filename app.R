@@ -433,6 +433,8 @@ server <- function(input, output, session) {
     shinyjs::hide("next.done")
     shinyjs::show("next.review")
     shinyjs::show("import.card")
+    shinyjs::enable("submit")
+    shinyjs::hide("submit.success.msg")
   })
   
   # Go back to home screen after data have been uploaded to database
@@ -443,6 +445,8 @@ server <- function(input, output, session) {
     # TODO: When data browser (or home screen with instructions?) is implemented, go there instead
     shinyjs::show("next.review")
     shinyjs::show("import.card")
+    shinyjs::enable("submit")
+    shinyjs::hide("submit.success.msg")
   })
 }
 
