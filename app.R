@@ -23,13 +23,15 @@ ui <- tagList(
                                  tags$div(id = "import.card", class = "panel panel-default ",
                                           tags$div(class = "panel-body",
                                                    fluidRow(
-                                                     column(12, align = "center",
+                                                     column(2),
+                                                     column(8, align = "center",
                                                             fileInput("files.in", "Select data files to upload",
                                                                       multiple = TRUE,
                                                                       accept = ".csv"),
                                                             hidden(h4("Import Summary", id = "import.summary")),
                                                             dataTableOutput("data.imported")
-                                                     )
+                                                     ),
+                                                     column(2)
                                                    )
                                           )
                                  ),
@@ -224,7 +226,14 @@ server <- function(input, output, session) {
                                     sep = " ")) %>%
       select(metric, import.message)
     
-    datatable(summary, rownames = FALSE, colnames = "", options = list(dom = "b", ordering = F))
+    datatable(summary,
+              rownames = FALSE,
+              colnames = "",
+              selection = "none",
+              options = list(dom = "b",
+                             ordering = F,
+                             columnDefs = list(list(width = '200px', targets = "_all")))) %>%
+      formatStyle(1, `text-align` = 'right')
   })
   
   observeEvent(data.imports(), {
