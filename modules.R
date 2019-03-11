@@ -47,7 +47,8 @@ singleSelectDT <- function (data, col.names) {
   datatable(data, selection = list(
     mode = "single",
     target = "row"),
-    colnames = col.names
+    colnames = col.names,
+    rownames = FALSE,
     options = list(
       order = sort,
       dom = 't'
