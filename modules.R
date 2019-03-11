@@ -172,10 +172,16 @@ dataViewAndEditUI <- function(id) {
   ns <- NS(id)
   
   tagList(
-    h3("Uploaded data"),
-    dataTableOutput(ns("data.view")),  # Data table UI for viewing data and selecting a row
-    h3("Edit data"),
-    uiOutput(ns("data.edit"))  # Dynamically generated edit boxes will go here
+    fluidRow(
+      column(4,
+             h4("Select a Calibration"),
+             dataTableOutput(ns("data.view"))  # Data table UI for viewing data and selecting a row     
+      ),
+      column(8,
+             h4("Review Data and Correct as Needed"),
+             uiOutput(ns("data.edit"))  # Dynamically generated edit boxes will go here
+      )
+    )
   )
   
 }
