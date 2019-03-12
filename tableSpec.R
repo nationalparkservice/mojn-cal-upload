@@ -24,7 +24,7 @@ dropdown.wqinstr <- setNames(dropdown.wqinstr$ID, dropdown.wqinstr$Label)
 prepDataForInsert <- function(data) {
   # Convert data types to make SQL happy
   data$CalibrationDate <- as.POSIXct(data$CalibrationDate, tz = "GMT")
-  data$CalibrationTime <- as.POSIXct(data$CalibrationTime, format = format("%H:%M:%S"), tz = "GMT")
+  data$CalibrationTime <- as.POSIXct(paste("1899-12-30 ", data$CalibrationTime), format = format("%Y-%m-%d %H:%M"), tz = "GMT")
   data$Notes[trimws(data$Notes, "both") == ""] <- NA  # Convert blank notes to NA
   # Prevent "NA" being inserted into the database as a string. This seems to only happen when there is a single row in
   # the data frame and a column of type character contains NA. Converting that column to type logical fixes the problem.
