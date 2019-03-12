@@ -334,9 +334,7 @@ server <- function(input, output, session) {
     # Attempt to append data to table in database
     success <- FALSE
     tryCatch({
-      table.spec$CalibrationSpCond$data.upload(isolate(final.data$CalibrationSpCond()))
-      table.spec$CalibrationDO$data.upload(isolate(final.data$CalibrationDO()))
-      table.spec$CalibrationpH$data.upload(isolate(final.data$CalibrationpH()))
+      insertInto(isolate(final.data))
       
       # If successful, display success message
       removeModal()

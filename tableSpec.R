@@ -36,26 +36,71 @@ prepDataForInsert <- function(data) {
 }
 
 # Generate INSERT INTO statement
-insertInto <- function(table.name, data, pool) {
-  if (nrow(data) > 0) {
-    data <- prepDataForInsert(data)
+insertInto <- function(data, pool = pool) {
+  # Generate INSERT INTO statement for each calibration table
+  sql.do <- ""
+  sql.spcond <- ""
+  sql.ph <- ""
+  browser()
+  if (nrow(data$CalibrationDO()) > 0) {
+    data.do <- prepDataForInsert(data$CalibrationDO())
     
-    poolWithTransaction(pool = pool, func = function(conn) {
-      cols <- paste(names(data), collapse = ", ")
-      placeholders <- rep("?", length(names(data)))
-      placeholders <- paste(placeholders, collapse = ", ")
-      sql <- paste0("INSERT INTO ",
-                    table.name,
-                    " (", cols, ") ",
-                    "VALUES (",
-                    placeholders,
-                    ")")
-      insert <- dbSendStatement(conn, sql)
-      dbBind(insert, as.list(data))
-      dbGetRowsAffected(insert)
-      dbClearResult(insert)
-    })
+    cols <- paste(names(data.do), collapse = ", ")
+    placeholders <- rep("?", length(names(data.do)))
+    placeholders <- paste(placeholders, collapse = ", ")
+    sql.do <- paste0("INSERT INTO data.CalibrationDO (",
+                     cols, ") ",
+                     "VALUES (",
+                     placeholders,
+                     ")")
   }
+  if (nrow(data$CalibrationSpCond()) > 0) {
+    data.spcond <- prepDataForInsert(data$CalibrationSpCond())
+    
+    cols <- paste(names(data.spcond), collapse = ", ")
+    placeholders <- rep("?", length(names(data.spcond)))
+    placeholders <- paste(placeholders, collapse = ", ")
+    sql.spcond <- paste0("INSERT INTO data.CalibrationSpCond (", cols, ") ",
+                         "VALUES (",
+                         placeholders,
+                         ")")
+  }
+  if (nrow(data$CalibrationpH()) > 0) {
+    data.ph <- prepDataForInsert(data$CalibrationpH())
+    
+    cols <- paste(names(data.ph), collapse = ", ")
+    placeholders <- rep("?", length(names(data.ph)))
+    placeholders <- paste(placeholders, collapse = ", ")
+    sql.ph <- paste0("INSERT INTO data.CalibrationpH (",
+                     cols, ") ",
+                     "VALUES (",
+                     placeholders,
+                     ")")
+  }
+  
+  poolWithTransaction(pool = pool, func = function(conn) {
+    # Insert DO
+    if (sql.do != "") {
+      insert <- dbSendStatement(conn, sql.do)
+      dbBind(insert, as.list(data.do))
+      dbClearResult(insert)
+    }
+    
+    # Insert SpCond
+    if (sql.spcond != "") {
+      insert <- dbSendStatement(conn, sql.spcond)
+      dbBind(insert, as.list(data.spcond))
+      dbClearResult(insert)
+    }
+    
+    # Insert pH
+    if (sql.pH != "") {
+      insert <- dbSendStatement(conn, sql.ph)
+      dbBind(insert, as.list(data.ph))
+      dbClearResult(insert)
+    }
+  })
+  
 }
 
 # Col specs - it is assumed that all of the columns in the column specification should be uploaded to the database after data review
