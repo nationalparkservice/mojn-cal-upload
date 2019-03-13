@@ -1,21 +1,21 @@
 library(pool)
 
 # Database connection
-pool <- dbPool(drv = odbc::odbc(),
+my.pool <- dbPool(drv = odbc::odbc(),
                Driver = "SQL Server Native Client 11.0",
                Server = "INPLAKE36792JNX\\SARAH_LOCAL",
                Database = "MOJN_SharedTables",
                Trusted_Connection = "Yes")
 
 onStop(function() {
-  poolClose(pool)
+  poolClose(my.pool)
 })
 
 # Load table pointers to calibration data and refs:
-db.SpCond <- tbl(pool, in_schema("data", "CalibrationSpCond"))
-db.DO <- tbl(pool, in_schema("data", "CalibrationDO"))
-db.pH <- tbl(pool, in_schema("data", "CalibrationpH"))
-db.ref.wqinstr <- tbl(pool, in_schema("ref", "WaterQualityInstrument"))
+db.SpCond <- tbl(my.pool, in_schema("data", "CalibrationSpCond"))
+db.DO <- tbl(my.pool, in_schema("data", "CalibrationDO"))
+db.pH <- tbl(my.pool, in_schema("data", "CalibrationpH"))
+db.ref.wqinstr <- tbl(my.pool, in_schema("ref", "WaterQualityInstrument"))
 dropdown.wqinstr <- arrange(db.ref.wqinstr, desc(IsActive), Model) %>% collect()
 dropdown.wqinstr <- setNames(dropdown.wqinstr$ID, dropdown.wqinstr$Label)
 
@@ -35,12 +35,11 @@ prepDataForInsert <- function(data) {
 }
 
 # Generate INSERT INTO statement
-insertInto <- function(data, pool = pool) {
+insertInto <- function(data, db.pool = my.pool) {
   # Generate INSERT INTO statement for each calibration table
   sql.do <- ""
   sql.spcond <- ""
   sql.ph <- ""
-  browser()
   if (nrow(data$CalibrationDO()) > 0) {
     data.do <- prepDataForInsert(data$CalibrationDO())
     
@@ -77,7 +76,7 @@ insertInto <- function(data, pool = pool) {
                      ")")
   }
   
-  poolWithTransaction(pool = pool, func = function(conn) {
+  poolWithTransaction(pool = db.pool, func = function(conn) {
     # Insert DO
     if (sql.do != "") {
       insert <- dbSendStatement(conn, sql.do)
@@ -93,7 +92,7 @@ insertInto <- function(data, pool = pool) {
     }
     
     # Insert pH
-    if (sql.pH != "") {
+    if (sql.ph != "") {
       insert <- dbSendStatement(conn, sql.ph)
       dbBind(insert, as.list(data.ph))
       dbClearResult(insert)
