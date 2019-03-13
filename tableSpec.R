@@ -258,10 +258,6 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                             select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -DOInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
                                             rename(DOInstrumentID = ID)
                                           return(data)
-                                        }),
-                                        data.upload = function(data)({
-                                          # Insert data into the CalibrationDO table
-                                          insertInto("data.CalibrationDO", data, pool)
                                         })),
                    CalibrationpH = list(table.name = "CalibrationpH",
                                         display.name = "pH",
@@ -288,10 +284,6 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                             select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -pHInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
                                             rename(pHInstrumentID = ID)
                                           return(data)
-                                        }),
-                                        data.upload = function(data)({
-                                          # Insert data into the CalibrationpH table
-                                          insertInto("data.CalibrationpH", data, pool)
                                         })),
                    CalibrationSpCond = list(table.name = "CalibrationSpCond",
                                             display.name = "Specific Conductance",
@@ -315,9 +307,5 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                                 select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -SpCondInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
                                                 rename(SpCondInstrumentID = ID)
                                               return(data)
-                                            }),
-                                            data.upload = function(data)({
-                                              # Insert data into the CalibrationSpCond table
-                                              insertInto("data.CalibrationSpCond", data, pool)
                                             }))
 )
