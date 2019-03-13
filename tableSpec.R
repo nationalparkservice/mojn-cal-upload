@@ -1,4 +1,3 @@
-library(tidyverse)
 library(pool)
 
 # Database connection

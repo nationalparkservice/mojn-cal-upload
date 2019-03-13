@@ -3,13 +3,13 @@ library(shinyjs)
 library(odbc)
 library(dbplyr)
 library(tidyverse)
-library(pool)
 library(DT)
 library(data.table)
 library(shinythemes)
 
-source("modules.R")
 source("tableSpec.R")
+source("modules.R")
+
 
 # Define UI for application that imports calibration data from .csv and uploads to database
 ui <- tagList(

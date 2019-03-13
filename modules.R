@@ -1,10 +1,3 @@
-library(shiny)
-library(odbc)
-library(dbplyr)
-library(tidyverse)
-library(pool)
-library(DT)
-
 #---------------------------------------
 # Functions
 #---------------------------------------
