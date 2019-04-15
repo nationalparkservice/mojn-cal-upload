@@ -1,15 +1,8 @@
-library(shiny)
-library(odbc)
-library(dbplyr)
-library(tidyverse)
-library(pool)
-library(DT)
-
 #---------------------------------------
 # Functions
 #---------------------------------------
 
-readFiles <- function (file.paths, file.names, search.string = "*", col.types = NULL) {
+readFiles <- function (file.paths, search.string = "*", col.types = NULL) {
   # Given a list of .csv file paths and file names, reads data into a data frame from files whose name matches the search string.
   #
   # Args:
@@ -20,7 +13,7 @@ readFiles <- function (file.paths, file.names, search.string = "*", col.types = 
   # Returns:
   #   A dataframe containing the data read from the input files. Note that duplicate rows will be removed.
   
-  file.paths <- file.paths[grepl(search.string, file.names)]
+  file.paths <- file.paths[grepl(search.string, file.paths)]
   
   if (length(file.paths > 0)) {
     data.in <- bind_rows(lapply(file.paths, read_csv, col_types = col.types))
@@ -40,11 +33,19 @@ singleSelectDT <- function (data, col.names) {
   #
   # Returns:
   #   A DT datatable with single-row selection enabled
-  
+  sort <- list(list(0, "asc"))
+  for (i in 1:(length(col.names)-1)) {
+    sort <- append(sort, list(list(i, "asc")))
+  }
   datatable(data, selection = list(
     mode = "single",
     target = "row"),
-    colnames = col.names
+    colnames = col.names,
+    rownames = FALSE,
+    options = list(
+      order = sort,
+      dom = 't'
+    )
   )
 }
 
@@ -69,6 +70,7 @@ makeEditBoxes <- function(session, edit.cols, col.spec) {
   
   # Initialize edit box list.
   edit.boxes <- vector(mode = "list", length = nrow(edit.cols))
+  edit.box.cols <- vector(mode = "list", length = ceiling(nrow(edit.cols)/5))
   
   for (row in 1:nrow(edit.cols)) {
     col <- edit.cols[row,]
@@ -96,16 +98,25 @@ makeEditBoxes <- function(session, edit.cols, col.spec) {
                                                choices = c("", options),
                                                selected = NA))
     }
+    if (row == ceiling(nrow(edit.cols) / 2)) {
+      edit.box.cols[1] <- list(column(6, edit.boxes))
+      edit.boxes <- vector(mode = "list", length = nrow(edit.cols))
+    } else if (row == nrow(edit.cols)){
+      edit.box.cols[2] <- list(column(6, edit.boxes))
+    }
   }
   
   # Convert edit boxes to tag list and add cancel/save/delete buttons
-  edit.boxes <- tagList(edit.boxes)
+  edit.box.cols <- tagList(fluidRow(edit.box.cols))
   delete.button <- actionButton(session$ns("delete"), "Delete")
   cancel.button <- actionButton(session$ns("cancel"), "Cancel")
   save.button <- actionButton(session$ns("save"), "Save")
-  edit.boxes <- tagAppendChildren(edit.boxes, delete.button, cancel.button, save.button)
+  buttons <- tagList(fluidRow(
+    column(12, align = "center", delete.button, cancel.button, save.button)
+  ))
+  edit.box.cols <- tagList(edit.box.cols, buttons)
   
-  return(edit.boxes)
+  return(edit.box.cols)
 }
 
 updateEditBoxes <- function(session, edit.cols, row.selected, data) {
@@ -154,164 +165,6 @@ updateEditBoxes <- function(session, edit.cols, row.selected, data) {
 # Modules
 #---------------------------------------
 
-# CSV file import module UI
-# TODO: read from JSON
-fileImportInput <- function(id) {
-  # File import UI module.
-  #
-  # Args:
-  #   id: The namespace for the module
-  
-  ns <- NS(id)
-  
-  tagList(
-    useShinyjs(),
-    fileInput(ns("files.in"), "Select data files to upload",
-              multiple = TRUE,
-              accept = ".csv"),
-    hidden(h4("Import Summary", id = ns("import.summary"))),
-    dataTableOutput(ns("data.imported"))
-  )
-}
-
-
-# CSV file import module server function
-fileImport <- function(input, output, session, table.spec) {
-  # File import module that reads csv data files into dataframes in a reactiveValues object.
-  #
-  # Args:
-  #   input, output, session: required parameters for Shiny server function
-  #   table.spec: A list of table types (e.g. CalibrationDO, WaterQualityActivity), each a list containing the following:
-  #                 search.string: Regular expression specifying which files in file.names correspond to that table type
-  #                 col.types: Column specification
-  #                 data.manip: Function to manipulate the data. Must take the data table as its first argument.
-  #
-  # Returns:
-  #   A list containing the data read from the input files. Note that duplicate rows will be removed.
-  
-  data <- list()
-  imports <- list()
-  
-  # Get list of imported files
-  data.files <- reactive({
-    # Do nothing if no files present
-    validate(need(input$files.in, message = "Files needed"))
-    input$files.in
-  })
-  
-  # When new files are uploaded, populate data.imports
-  all.data <- eventReactive(data.files(), {
-    for (tbl in table.spec) {
-      data.in <- readFiles(data.files()$datapath,
-                           data.files()$name,
-                           tbl$search.string,
-                           col.types = tbl$col.types)
-      data[[tbl$table.name]] <- data.in
-    }
-    data
-  })
-  
-  # Figure out which, if any, records are already present in the database
-  existing.SpCond <- reactive({
-    
-    if (nrow(all.data()$CalibrationSpCond > 0)) {
-      db.SpCond %>%
-        filter(GUID %in% all.data()$CalibrationSpCond$GUID) %>%
-        collect() 
-    } else {
-      db.SpCond %>%
-        filter(GUID != GUID) %>%
-        collect() 
-    }
-    
-  })
-  
-  existing.DO <- reactive({
-    if (nrow(all.data()$CalibrationDO > 0)) {
-      db.DO %>%
-        filter(GUID %in% all.data()$CalibrationDO$GUID) %>%
-        collect() 
-    } else {
-      db.DO %>%
-        filter(GUID != GUID) %>%
-        collect() 
-    }
-  })
-  
-  existing.pH <- reactive({
-    if (nrow(all.data()$CalibrationpH > 0)) {
-      db.pH %>%
-        filter(GUID %in% all.data()$CalibrationpH$GUID) %>%
-        collect() 
-    } else {
-      db.pH %>%
-        filter(GUID != GUID) %>%
-        collect() 
-    }
-  })
-  
-  # Omit any data already in the database
-  data.imports <- reactive({
-    imports$CalibrationSpCond <- all.data()$CalibrationSpCond %>%
-      filter(!(GUID %in% existing.SpCond()$GUID))
-    
-    imports$CalibrationDO <- all.data()$CalibrationDO %>%
-      filter(!(GUID %in% existing.DO()$GUID))
-    
-    imports$CalibrationpH <- all.data()$CalibrationpH %>%
-      filter(!(GUID %in% existing.pH()$GUID))
-    
-    imports
-  })
-  
-  importStatusText <- function(count, record.type = "imported") {
-    if (count == 0) {
-      if (record.type == "imported") {
-        txt <- "No calibrations imported."
-      } else {
-        txt <- ""
-      }
-    } else if (record.type == "ignored") {
-      txt <- paste(count, "calibration(s) were omitted because they are already in the database.", sep = " ")
-    } else if (record.type == "imported") {
-      txt <- paste("Imported", count, "calibration(s).", sep = " ")
-    }
-    return(txt)
-  }
-  
-  vImportStatusText <- Vectorize(importStatusText, "count")
-  
-  output$data.imported <- renderDataTable({
-    
-    spcond.count <- nrow(data.imports()$CalibrationSpCond)
-    do.count <- nrow(data.imports()$CalibrationDO)
-    ph.count <- nrow(data.imports()$CalibrationpH)
-    
-    spcond.ignored.count <- nrow(existing.SpCond())
-    do.ignored.count <- nrow(existing.DO())
-    ph.ignored.count <- nrow(existing.pH())
-    
-    summary <- data_frame(metric = c("Specific Conductance", "Dissolved Oxygen", "pH"),
-                          import.count = c(spcond.count, do.count, ph.count),
-                          ignored.count = c(spcond.ignored.count, do.ignored.count, ph.ignored.count))
-
-    summary <- summary %>%
-      mutate(import.message = paste(vImportStatusText(import.count), 
-                                    vImportStatusText(ignored.count, record.type = "ignored"), 
-                                    sep = " ")) %>%
-      select(metric, import.message)
-
-    datatable(summary, rownames = FALSE, colnames = "", options = list(dom = "b", ordering = F))
-  })
-  
-  observeEvent(data.imports(), {
-    shinyjs::show("import.summary")
-  })
-  
-  return(data.imports)
-}
-
-
 # Data view and edit module UI
 dataViewAndEditUI <- function(id) {
   # UI module for viewing data in a dataframe and selecting/editing rows.
@@ -322,10 +175,16 @@ dataViewAndEditUI <- function(id) {
   ns <- NS(id)
   
   tagList(
-    h3("Uploaded data"),
-    dataTableOutput(ns("data.view")),  # Data table UI for viewing data and selecting a row
-    h3("Edit data"),
-    uiOutput(ns("data.edit"))  # Dynamically generated edit boxes will go here
+    fluidRow(
+      column(4,
+             h4("Select a Calibration"),
+             dataTableOutput(ns("data.view"))  # Data table UI for viewing data and selecting a row     
+      ),
+      column(8,
+             h4("Review Data and Correct as Needed"),
+             uiOutput(ns("data.edit"))  # Dynamically generated edit boxes will go here
+      )
+    )
   )
   
 }
@@ -512,104 +371,4 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   })
   
   return(data.in)
-}
-
-# Data upload module UI
-dataUploadUI <- function(id) {
-  # UI module for viewing final data and uploading it to a database.
-  #
-  # Args:
-  #   id: The namespace for the module
-  
-  ns <- NS(id)
-  
-  tagList(
-    actionButton(ns("submit"), "Submit data")
-  )
-  
-}
-
-# Data upload module server function
-dataUpload <- function(input, output, session, data, upload.function) {
-  # Module for viewing final data and uploading it to a database.
-  #
-  # Args:
-  #   input, output, session: required parameters for Shiny server function.
-  #   data: The data table to be uploaded.
-  #   upload.function: The function that will insert the data into the database.
-  #
-  # Returns:
-  #   A boolean value indicating whether data upload was successful
-  
-  observeEvent(input$submit, {
-    # Prompt user to confirm upload
-    showModal({
-      modalDialog(
-        h3("Confirm upload"),
-        p("You are about to upload data to the master database. Would you like to continue?"),
-        footer = tagList(
-          modalButton("No, not yet"),
-          actionButton(session$ns("conf.upload"), "Yes, upload the data!")
-        ),
-        easyClose = FALSE,
-        size = "m"
-      )
-    })
-  })
-  
-  observeEvent(input$conf.upload, {
-    # Attempt to append data to table in database
-    tryCatch({
-      # If successful, display success message
-      # TODO: disable repeat uploads
-      upload.function(data)
-      removeModal()
-      showModal({
-        modalDialog(
-          h3("Upload success"),
-          p("Successful data upload"),
-          footer = tagList(
-            modalButton("Ok")
-          ),
-          easyClose = FALSE,
-          size = "s"
-        )
-      })
-    },
-    error = function(c) {
-      # If unsuccessful, display error message
-      showModal({
-        modalDialog(
-          h3("Upload error"),
-          p("There was an error uploading the data."),
-          p(paste0("Error message: ", c)),
-          footer = tagList(
-            modalButton("Ok")
-          ),
-          easyClose = FALSE,
-          size = "s"
-        )
-      })
-      return(FALSE)
-    },
-    warning = function(c) {
-      showModal({
-        modalDialog(
-          h3("Upload warning"),
-          p("There was an error uploading the data."),
-          p(paste0("Warning message: ", c)),
-          footer = tagList(
-            modalButton("Ok")
-          ),
-          easyClose = FALSE,
-          size = "s"
-        )
-      })
-      return(FALSE)
-    },
-    message = function(c) {
-      
-    })
-  })
-  return(TRUE)
 }

@@ -1,22 +1,21 @@
-library(tidyverse)
 library(pool)
 
 # Database connection
-pool <- dbPool(drv = odbc::odbc(),
+my.pool <- dbPool(drv = odbc::odbc(),
                Driver = "SQL Server Native Client 11.0",
                Server = "INPLAKE36792JNX\\SARAH_LOCAL",
                Database = "MOJN_SharedTables",
                Trusted_Connection = "Yes")
 
 onStop(function() {
-  poolClose(pool)
+  poolClose(my.pool)
 })
 
 # Load table pointers to calibration data and refs:
-db.SpCond <- tbl(pool, in_schema("data", "CalibrationSpCond"))
-db.DO <- tbl(pool, in_schema("data", "CalibrationDO"))
-db.pH <- tbl(pool, in_schema("data", "CalibrationpH"))
-db.ref.wqinstr <- tbl(pool, in_schema("ref", "WaterQualityInstrument"))
+db.SpCond <- tbl(my.pool, in_schema("data", "CalibrationSpCond"))
+db.DO <- tbl(my.pool, in_schema("data", "CalibrationDO"))
+db.pH <- tbl(my.pool, in_schema("data", "CalibrationpH"))
+db.ref.wqinstr <- tbl(my.pool, in_schema("ref", "WaterQualityInstrument"))
 dropdown.wqinstr <- arrange(db.ref.wqinstr, desc(IsActive), Model) %>% collect()
 dropdown.wqinstr <- setNames(dropdown.wqinstr$ID, dropdown.wqinstr$Label)
 
@@ -24,7 +23,7 @@ dropdown.wqinstr <- setNames(dropdown.wqinstr$ID, dropdown.wqinstr$Label)
 prepDataForInsert <- function(data) {
   # Convert data types to make SQL happy
   data$CalibrationDate <- as.POSIXct(data$CalibrationDate, tz = "GMT")
-  data$CalibrationTime <- as.POSIXct(data$CalibrationTime, format = format("%H:%M:%S"), tz = "GMT")
+  data$CalibrationTime <- as.POSIXct(paste("1899-12-30 ", data$CalibrationTime), format = format("%Y-%m-%d %H:%M"), tz = "GMT")
   data$Notes[trimws(data$Notes, "both") == ""] <- NA  # Convert blank notes to NA
   # Prevent "NA" being inserted into the database as a string. This seems to only happen when there is a single row in
   # the data frame and a column of type character contains NA. Converting that column to type logical fixes the problem.
@@ -36,26 +35,70 @@ prepDataForInsert <- function(data) {
 }
 
 # Generate INSERT INTO statement
-insertInto <- function(table.name, data, pool) {
-  if (nrow(data) > 0) {
-    data <- prepDataForInsert(data)
+insertInto <- function(data, db.pool = my.pool) {
+  # Generate INSERT INTO statement for each calibration table
+  sql.do <- ""
+  sql.spcond <- ""
+  sql.ph <- ""
+  if (nrow(data$CalibrationDO()) > 0) {
+    data.do <- prepDataForInsert(data$CalibrationDO())
     
-    poolWithTransaction(pool = pool, func = function(conn) {
-      cols <- paste(names(data), collapse = ", ")
-      placeholders <- rep("?", length(names(data)))
-      placeholders <- paste(placeholders, collapse = ", ")
-      sql <- paste0("INSERT INTO ",
-                    table.name,
-                    " (", cols, ") ",
-                    "VALUES (",
-                    placeholders,
-                    ")")
-      insert <- dbSendStatement(conn, sql)
-      dbBind(insert, as.list(data))
-      dbGetRowsAffected(insert)
-      dbClearResult(insert)
-    })
+    cols <- paste(names(data.do), collapse = ", ")
+    placeholders <- rep("?", length(names(data.do)))
+    placeholders <- paste(placeholders, collapse = ", ")
+    sql.do <- paste0("INSERT INTO data.CalibrationDO (",
+                     cols, ") ",
+                     "VALUES (",
+                     placeholders,
+                     ")")
   }
+  if (nrow(data$CalibrationSpCond()) > 0) {
+    data.spcond <- prepDataForInsert(data$CalibrationSpCond())
+    
+    cols <- paste(names(data.spcond), collapse = ", ")
+    placeholders <- rep("?", length(names(data.spcond)))
+    placeholders <- paste(placeholders, collapse = ", ")
+    sql.spcond <- paste0("INSERT INTO data.CalibrationSpCond (", cols, ") ",
+                         "VALUES (",
+                         placeholders,
+                         ")")
+  }
+  if (nrow(data$CalibrationpH()) > 0) {
+    data.ph <- prepDataForInsert(data$CalibrationpH())
+    
+    cols <- paste(names(data.ph), collapse = ", ")
+    placeholders <- rep("?", length(names(data.ph)))
+    placeholders <- paste(placeholders, collapse = ", ")
+    sql.ph <- paste0("INSERT INTO data.CalibrationpH (",
+                     cols, ") ",
+                     "VALUES (",
+                     placeholders,
+                     ")")
+  }
+  
+  poolWithTransaction(pool = db.pool, func = function(conn) {
+    # Insert DO
+    if (sql.do != "") {
+      insert <- dbSendStatement(conn, sql.do)
+      dbBind(insert, as.list(data.do))
+      dbClearResult(insert)
+    }
+    
+    # Insert SpCond
+    if (sql.spcond != "") {
+      insert <- dbSendStatement(conn, sql.spcond)
+      dbBind(insert, as.list(data.spcond))
+      dbClearResult(insert)
+    }
+    
+    # Insert pH
+    if (sql.ph != "") {
+      insert <- dbSendStatement(conn, sql.ph)
+      dbBind(insert, as.list(data.ph))
+      dbClearResult(insert)
+    }
+  })
+  
 }
 
 # Col specs - it is assumed that all of the columns in the column specification should be uploaded to the database after data review
@@ -68,15 +111,15 @@ SpCond.col.spec <- list(CalibrationDate = list(label = "Date",
                                                edit = TRUE,
                                                type = "time"),
                         StandardValue_microS_per_cm = list(label = "Standard (\u03bcS/cm)",
-                                                           view = TRUE,
+                                                           view = FALSE,
                                                            edit = TRUE,
                                                            type = "numeric"),
                         PreCalibrationReading_microS_per_cm = list(label = 'Pre-cal (\u03bcS/cm)',
-                                                                   view = TRUE,
+                                                                   view = FALSE,
                                                                    edit = TRUE,
                                                                    type = "numeric"),
                         PostCalibrationReading_microS_per_cm = list(label = "Post-cal (\u03bcS/cm)",
-                                                                    view = TRUE,
+                                                                    view = FALSE,
                                                                     edit = TRUE,
                                                                     type = "numeric"),
                         SpCondInstrumentID = list(label = "Instrument",
@@ -87,11 +130,11 @@ SpCond.col.spec <- list(CalibrationDate = list(label = "Date",
                                                   lookup.pk = "ID",
                                                   lookup.text = "Label"),
                         Notes = list(label = "Notes",
-                                     view = TRUE,
+                                     view = FALSE,
                                      edit = TRUE,
                                      type = "notes"),
                         DateCreated = list(label = "Date Created",
-                                           view = TRUE,
+                                           view = FALSE,
                                            edit = FALSE,
                                            type = "date")
 )
@@ -105,23 +148,23 @@ DO.col.spec <- list(CalibrationDate = list(label = "Date",
                                            edit = TRUE,
                                            type = "time"),
                     BarometricPressure_mmHg = list(label = 'Barometric press. (mmHg)',
-                                                   view = TRUE,
+                                                   view = FALSE,
                                                    edit = TRUE,
                                                    type = "numeric"),
                     PreCalibrationTemperature_C = list(label = 'Pre-cal temp (C)',
-                                                       view = TRUE,
+                                                       view = FALSE,
                                                        edit = TRUE,
                                                        type = "numeric"),
                     PreCalibrationReading_percent = list(label = 'Pre-cal (%)',
-                                                         view = TRUE,
+                                                         view = FALSE,
                                                          edit = TRUE,
                                                          type = "numeric"),
                     PostCalibrationTemperature_C = list(label = 'Post-cal temp (C)',
-                                                        view = TRUE,
+                                                        view = FALSE,
                                                         edit = TRUE,
                                                         type = "numeric"),
                     PostCalibrationReading_percent = list(label = "Post-cal (%)",
-                                                          view = TRUE,
+                                                          view = FALSE,
                                                           edit = TRUE,
                                                           type = "numeric"),
                     DOInstrumentID = list(label = "Instrument",
@@ -132,11 +175,11 @@ DO.col.spec <- list(CalibrationDate = list(label = "Date",
                                           lookup.pk = "ID",
                                           lookup.text = "Label"),
                     Notes = list(label = "Notes",
-                                 view = TRUE,
+                                 view = FALSE,
                                  edit = TRUE,
                                  type = "notes"),
                     DateCreated = list(label = "Date Created",
-                                       view = TRUE,
+                                       view = FALSE,
                                        edit = FALSE,
                                        type = "date")
 )
@@ -154,23 +197,23 @@ pH.col.spec <- list(CalibrationDate = list(label = "Date",
                                             edit = TRUE,
                                             type = "numeric"),
                     TemperatureCorrectedStd_pH = list(label = "Temp. corrected standard",
-                                                      view = TRUE,
+                                                      view = FALSE,
                                                       edit = TRUE,
                                                       type = "numeric"),
                     PreCalibrationTemperature_C = list(label = 'Pre-cal temp (C)',
-                                                       view = TRUE,
+                                                       view = FALSE,
                                                        edit = TRUE,
                                                        type = "numeric"),
                     PreCalibrationReading_pH = list(label = 'Pre-cal pH',
-                                                    view = TRUE,
+                                                    view = FALSE,
                                                     edit = TRUE,
                                                     type = "numeric"),
                     PostCalibrationTemperature_C = list(label = 'Post-cal temp (C)',
-                                                        view = TRUE,
+                                                        view = FALSE,
                                                         edit = TRUE,
                                                         type = "numeric"),
                     PostCalibrationReading_pH = list(label = "Post-cal pH",
-                                                     view = TRUE,
+                                                     view = FALSE,
                                                      edit = TRUE,
                                                      type = "numeric"),
                     pHInstrumentID = list(label = "Instrument",
@@ -181,11 +224,11 @@ pH.col.spec <- list(CalibrationDate = list(label = "Date",
                                           lookup.pk = "ID",
                                           lookup.text = "Label"),
                     Notes = list(label = "Notes",
-                                 view = TRUE,
+                                 view = FALSE,
                                  edit = TRUE,
                                  type = "notes"),
                     DateCreated = list(label = "Date Created",
-                                       view = TRUE,
+                                       view = FALSE,
                                        edit = FALSE,
                                        type = "date")
 )
@@ -215,10 +258,6 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                             select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -DOInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
                                             rename(DOInstrumentID = ID)
                                           return(data)
-                                        }),
-                                        data.upload = function(data)({
-                                          # Insert data into the CalibrationDO table
-                                          insertInto("data.CalibrationDO", data, pool)
                                         })),
                    CalibrationpH = list(table.name = "CalibrationpH",
                                         display.name = "pH",
@@ -245,10 +284,6 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                             select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -pHInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
                                             rename(pHInstrumentID = ID)
                                           return(data)
-                                        }),
-                                        data.upload = function(data)({
-                                          # Insert data into the CalibrationpH table
-                                          insertInto("data.CalibrationpH", data, pool)
                                         })),
                    CalibrationSpCond = list(table.name = "CalibrationSpCond",
                                             display.name = "Specific Conductance",
@@ -272,9 +307,5 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                                 select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -SpCondInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
                                                 rename(SpCondInstrumentID = ID)
                                               return(data)
-                                            }),
-                                            data.upload = function(data)({
-                                              # Insert data into the CalibrationSpCond table
-                                              insertInto("data.CalibrationSpCond", data, pool)
                                             }))
 )
