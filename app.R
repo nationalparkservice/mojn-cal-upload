@@ -66,7 +66,8 @@ ui <- tagList(
                                                      fluidRow(
                                                        column(12, align = "center",
                                                               actionButton("submit", "Submit data"),
-                                                              hidden(h4(id = "submit.success.msg", "Success!"))
+                                                              hidden(h4(id = "submit.success.msg", "Success!")),
+                                                              hidden(p(id = "submit.success.info", "Data were successfully uploaded to the database. You may now close this browser tab."))
                                                        )
                                                      )
                                             )
@@ -104,6 +105,9 @@ ui <- tagList(
 
 # Define server logic
 server <- function(input, output, session) {
+  session$onSessionEnded(function() {
+    stopApp()
+  })
   
   ### Import data ###
   all.data <- list()
@@ -316,6 +320,7 @@ server <- function(input, output, session) {
       # Disable submit button after successful upload
       shinyjs::disable("submit")
       shinyjs::show("submit.success.msg")
+      shinyjs::show("submit.success.info")
       success <- TRUE
     },
     error = function(c) {
@@ -393,8 +398,8 @@ server <- function(input, output, session) {
   
   # Go back to home screen after data have been uploaded to database
   onclick("btn.next.done", {
-    js$closeWindow()
     stopApp()
+    delay(500, js$closeWindow())
   })
 }
 
