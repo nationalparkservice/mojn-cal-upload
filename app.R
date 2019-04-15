@@ -13,12 +13,9 @@ library(shinythemes)
 source("tableSpec.R")
 source("modules.R")
 
-close.window.js <- "shinyjs.closeWindow = function() { window.close(); }"
-
 # Define UI for application that imports calibration data from .csv and uploads to database
 ui <- tagList(
   useShinyjs(),
-  extendShinyjs(text = close.window.js, functions = c("closeWindow")),
   navbarPage("Water Quality Calibration Data",
              tabPanel("Upload",
                       fluidPage(
@@ -81,9 +78,6 @@ ui <- tagList(
                                            hidden(
                                              tags$li(id = "next.upload", class = "next",
                                                      tags$a(id = "btn.next.upload", href = "#", "Upload Data"))),
-                                           hidden(
-                                             tags$li(id = "next.done", class = "next",
-                                                     tags$a(id = "btn.next.done", href = "#", "Done"))),
                                            hidden(
                                              tags$li(id = "back.import", class = "previous",
                                                      tags$a(id = "btn.back.import", href = "#", "Back to Import"))),
@@ -362,10 +356,8 @@ server <- function(input, output, session) {
   # Handle events
   observeEvent(upload.success(), {
     if (upload.success()) {
-      # Show "done" and "import more" buttons
-      shinyjs::show("next.done")
+      # Prevent user from going back to review once data are uploaded
       shinyjs::hide("back.review")
-      shinyjs::disable("next.review")
     }
   })
   
@@ -394,12 +386,6 @@ server <- function(input, output, session) {
     shinyjs::hide("back.import")
     shinyjs::show("next.review")
     shinyjs::show("import.card")
-  })
-  
-  # Go back to home screen after data have been uploaded to database
-  onclick("btn.next.done", {
-    stopApp()
-    delay(500, js$closeWindow())
   })
 }
 
