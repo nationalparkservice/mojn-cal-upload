@@ -2,7 +2,7 @@
 # Functions
 #---------------------------------------
 
-readFiles <- function (file.paths, file.names, search.string = "*", col.types = NULL) {
+readFiles <- function (file.paths, search.string = "*", col.types = NULL) {
   # Given a list of .csv file paths and file names, reads data into a data frame from files whose name matches the search string.
   #
   # Args:
@@ -13,7 +13,7 @@ readFiles <- function (file.paths, file.names, search.string = "*", col.types = 
   # Returns:
   #   A dataframe containing the data read from the input files. Note that duplicate rows will be removed.
   
-  file.paths <- file.paths[grepl(search.string, file.names)]
+  file.paths <- file.paths[grepl(search.string, file.paths)]
   
   if (length(file.paths > 0)) {
     data.in <- bind_rows(lapply(file.paths, read_csv, col_types = col.types))

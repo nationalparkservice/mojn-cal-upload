@@ -1,3 +1,6 @@
+rm(list = ls())
+gc()
+
 library(shiny)
 library(shinyjs)
 library(odbc)
@@ -10,10 +13,12 @@ library(shinythemes)
 source("tableSpec.R")
 source("modules.R")
 
+close.window.js <- "shinyjs.closeWindow = function() { window.close(); }"
 
 # Define UI for application that imports calibration data from .csv and uploads to database
 ui <- tagList(
   useShinyjs(),
+  extendShinyjs(text = close.window.js, functions = c("closeWindow")),
   navbarPage("Water Quality Calibration Data",
              tabPanel("Upload",
                       fluidPage(
@@ -25,10 +30,7 @@ ui <- tagList(
                                                    fluidRow(
                                                      column(2),
                                                      column(8, align = "center",
-                                                            fileInput("files.in", "Select data files to upload",
-                                                                      multiple = TRUE,
-                                                                      accept = ".csv"),
-                                                            hidden(h4("Import Summary", id = "import.summary")),
+                                                            h4("Import Summary", id = "import.summary"),
                                                             dataTableOutput("data.imported")
                                                      ),
                                                      column(2)
@@ -86,10 +88,7 @@ ui <- tagList(
                                                      tags$a(id = "btn.back.import", href = "#", "Back to Import"))),
                                            hidden(
                                              tags$li(id = "back.review", class = "previous",
-                                                     tags$a(id = "btn.back.review", href = "#", "Back to Data Review"))),
-                                           hidden(
-                                             tags$li(id = "back.startover", class = "previous",
-                                                     tags$a(id = "btn.back.startover", href = "#", "Import More Data")))
+                                                     tags$a(id = "btn.back.review", href = "#", "Back to Data Review")))
                                    )
                                  )
                           )
@@ -105,89 +104,63 @@ ui <- tagList(
 
 # Define server logic
 server <- function(input, output, session) {
-  # output$file.import.ui <- renderUI(
-  #   fileImportInput("import.data")
-  # )
-  # 
-  # # Get new data from imported files
-  # data.imports <- callModule(fileImport, "import.data", table.spec)
   
   ### Import data ###
-  data <- list()
-  imports <- list()
-  data.files <- reactiveVal()
+  all.data <- list()
+  data.imports <- list()
   
   # Get list of imported files
-  observeEvent(input$files.in, {
-    # Do nothing if no files present
-    validate(need(input$files.in, message = FALSE))
-    data.files(input$files.in)
-  })
+  path.to.data <- "M:\\MONITORING\\WQCalibration\\DataFromFilemaker"
+  data.file.names <- list.files("M:\\MONITORING\\WQCalibration\\DataFromFilemaker", pattern = ".*Calibration(SpCond|DO|pH)\\.csv")
+  data.file.paths <- paste(path.to.data, data.file.names, sep = "\\")
   
   # Get data from uploaded files
-  all.data <- eventReactive(data.files(), {
-    for (tbl in table.spec) {
-      data.in <- readFiles(data.files()$datapath,
-                           data.files()$name,
-                           tbl$search.string,
-                           col.types = tbl$col.types)
-      data[[tbl$table.name]] <- data.in
-    }
-    data
-  })
+  for (tbl in table.spec) {
+    data.in <- readFiles(data.file.paths, search.string = tbl$search.string, col.types = tbl$col.types)
+    all.data[[tbl$table.name]] <- data.in
+  }
   
   # Figure out which, if any, records are already present in the database
-  existing.SpCond <- reactive({
-    
-    if (nrow(all.data()$CalibrationSpCond > 0)) {
-      db.SpCond %>%
-        filter(GUID %in% all.data()$CalibrationSpCond$GUID) %>%
-        collect() 
-    } else {
-      db.SpCond %>%
-        filter(GUID != GUID) %>%
-        collect() 
-    }
-    
-  })
+  if (nrow(all.data$CalibrationSpCond > 0)) {
+    existing.SpCond <- db.SpCond %>%
+      filter(GUID %in% all.data$CalibrationSpCond$GUID) %>%
+      collect() 
+  } else {
+    existing.SpCond <- db.SpCond %>%
+      filter(GUID != GUID) %>%
+      collect() 
+  }
   
-  existing.DO <- reactive({
-    if (nrow(all.data()$CalibrationDO > 0)) {
-      db.DO %>%
-        filter(GUID %in% all.data()$CalibrationDO$GUID) %>%
-        collect() 
-    } else {
-      db.DO %>%
-        filter(GUID != GUID) %>%
-        collect() 
-    }
-  })
+  if (nrow(all.data$CalibrationDO > 0)) {
+    existing.DO <- db.DO %>%
+      filter(GUID %in% all.data$CalibrationDO$GUID) %>%
+      collect() 
+  } else {
+    existing.DO <- db.DO %>%
+      filter(GUID != GUID) %>%
+      collect() 
+  }
   
-  existing.pH <- reactive({
-    if (nrow(all.data()$CalibrationpH > 0)) {
-      db.pH %>%
-        filter(GUID %in% all.data()$CalibrationpH$GUID) %>%
-        collect() 
-    } else {
-      db.pH %>%
-        filter(GUID != GUID) %>%
-        collect() 
-    }
-  })
+  if (nrow(all.data$CalibrationpH > 0)) {
+    existing.pH <- db.pH %>%
+      filter(GUID %in% all.data$CalibrationpH$GUID) %>%
+      collect() 
+  } else {
+    existing.pH <- db.pH %>%
+      filter(GUID != GUID) %>%
+      collect() 
+  }
   
   # Omit any data already in the database
-  data.imports <- reactive({
-    imports$CalibrationSpCond <- all.data()$CalibrationSpCond %>%
-      filter(!(GUID %in% existing.SpCond()$GUID))
-    
-    imports$CalibrationDO <- all.data()$CalibrationDO %>%
-      filter(!(GUID %in% existing.DO()$GUID))
-    
-    imports$CalibrationpH <- all.data()$CalibrationpH %>%
-      filter(!(GUID %in% existing.pH()$GUID))
-    
-    imports
-  })
+  data.imports$CalibrationSpCond <- all.data$CalibrationSpCond %>%
+    filter(!(GUID %in% existing.SpCond$GUID))
+  
+  data.imports$CalibrationDO <- all.data$CalibrationDO %>%
+    filter(!(GUID %in% existing.DO$GUID))
+  
+  data.imports$CalibrationpH <- all.data$CalibrationpH %>%
+    filter(!(GUID %in% existing.pH$GUID))
+  
   
   importStatusText <- function(count, record.type = "imported") {
     if (count == 0) {
@@ -208,13 +181,13 @@ server <- function(input, output, session) {
   
   output$data.imported <- renderDataTable({
     
-    spcond.count <- nrow(data.imports()$CalibrationSpCond)
-    do.count <- nrow(data.imports()$CalibrationDO)
-    ph.count <- nrow(data.imports()$CalibrationpH)
+    spcond.count <- nrow(data.imports$CalibrationSpCond)
+    do.count <- nrow(data.imports$CalibrationDO)
+    ph.count <- nrow(data.imports$CalibrationpH)
     
-    spcond.ignored.count <- nrow(existing.SpCond())
-    do.ignored.count <- nrow(existing.DO())
-    ph.ignored.count <- nrow(existing.pH())
+    spcond.ignored.count <- nrow(existing.SpCond)
+    do.ignored.count <- nrow(existing.DO)
+    ph.ignored.count <- nrow(existing.pH)
     
     summary <- data_frame(metric = c("Specific Conductance", "Dissolved Oxygen", "pH"),
                           import.count = c(spcond.count, do.count, ph.count),
@@ -236,82 +209,73 @@ server <- function(input, output, session) {
       formatStyle(1, `text-align` = 'right')
   })
   
-  observeEvent(data.imports(), {
-    shinyjs::show("import.summary")
-    shinyjs::show("data.imported")
-  })
-  
   # Disable next button if no data imported
-  observeEvent(data.imports(), {
-    
-    data.exist <- FALSE
-    tabs.to.show <- c()
-    
-    # Check if data were imported
-    if (nrow(data.imports()$CalibrationSpCond) > 0) {
-      tabs.to.show <- c(tabs.to.show, "Specific Conductance")
-      data.exist <- TRUE
-    }
-    
-    if (nrow(data.imports()$CalibrationDO) > 0) {
-      tabs.to.show <- c(tabs.to.show, "Dissolved Oxygen")
-      data.exist <- TRUE
-    }
-    
-    if (nrow(data.imports()$CalibrationpH) > 0) {
-      tabs.to.show <- c(tabs.to.show, "pH")
-      data.exist <- TRUE
-    }
-    
-    tabs.to.hide <- setdiff(c("Specific Conductance", "Dissolved Oxygen", "pH"), tabs.to.show)
-    
-    if (data.exist) {
-      # Enable next button if data were imported
-      shinyjs::enable("next.review")
-      # Advance from import screen to review screen on next button click
-      onclick("btn.next.review", {
-        shinyjs::hide("next.review")
-        shinyjs::hide("import.card")
-        shinyjs::show("review.card")
-        shinyjs::show("next.upload")
-        shinyjs::show("back.import")
-        for (tab in tabs.to.show) {
-          showTab("review.tabs", tab)
-        }
-        for (tab in tabs.to.hide) {
-          hideTab("review.tabs", tab)
-        }
-      })
-    } else {
-      # Disable next button if no data imported
-      shinyjs::disable("next.review")
-      # Do nothing when disabled button is clicked
-      onclick("btn.next.review", {})
-    }
-  })
+  data.exist <- FALSE
+  tabs.to.show <- c()
+  
+  # Check if data were imported
+  if (nrow(data.imports$CalibrationSpCond) > 0) {
+    tabs.to.show <- c(tabs.to.show, "Specific Conductance")
+    data.exist <- TRUE
+  }
+  
+  if (nrow(data.imports$CalibrationDO) > 0) {
+    tabs.to.show <- c(tabs.to.show, "Dissolved Oxygen")
+    data.exist <- TRUE
+  }
+  
+  if (nrow(data.imports$CalibrationpH) > 0) {
+    tabs.to.show <- c(tabs.to.show, "pH")
+    data.exist <- TRUE
+  }
+  
+  tabs.to.hide <- setdiff(c("Specific Conductance", "Dissolved Oxygen", "pH"), tabs.to.show)
+  
+  if (data.exist) {
+    # Enable next button if data were imported
+    shinyjs::enable("next.review")
+    # Advance from import screen to review screen on next button click
+    onclick("btn.next.review", {
+      shinyjs::hide("next.review")
+      shinyjs::hide("import.card")
+      shinyjs::show("review.card")
+      shinyjs::show("next.upload")
+      shinyjs::show("back.import")
+      for (tab in tabs.to.show) {
+        showTab("review.tabs", tab)
+      }
+      for (tab in tabs.to.hide) {
+        hideTab("review.tabs", tab)
+      }
+    })
+  } else {
+    # Disable next button if no data imported
+    shinyjs::disable("next.review")
+    # Do nothing when disabled button is clicked
+    onclick("btn.next.review", {})
+  }
   
   # Initialize reactiveValues object to store final reviewed/edited data
   final.data <- reactiveValues()
   
   # Clean up data from uploaded files using data manipulation functions provided in the table specification
-  clean.data <- reactive({
-    clean.data <- list()
-    for (table in table.spec) {
-      # Clean up data, if present
-      if (nrow(data.imports()[[table$table.name]]) > 0) {
-        clean.data[[table$table.name]] <- data.imports()[[table$table.name]] %>% table$data.manip()
-      } else {
-        clean.data[[table$table.name]] <- data_frame()
-      }
+  clean.data <- list()
+  for (table in table.spec) {
+    # Clean up data, if present
+    if (nrow(data.imports[[table$table.name]]) > 0) {
+      clean.data[[table$table.name]] <- data.imports[[table$table.name]] %>% table$data.manip()
+    } else {
+      clean.data[[table$table.name]] <- data_frame()
     }
-    clean.data
-  })
+  }
   
-  observeEvent(clean.data(), {
-    final.data$CalibrationSpCond <- callModule(dataViewAndEdit, id = "CalibrationSpCond", data = clean.data()$CalibrationSpCond, col.spec = table.spec$CalibrationSpCond$col.spec)
-    final.data$CalibrationDO <- callModule(dataViewAndEdit, id = "CalibrationDO", data = clean.data()$CalibrationDO, col.spec = table.spec$CalibrationDO$col.spec)
-    final.data$CalibrationpH <- callModule(dataViewAndEdit, id = "CalibrationpH", data = clean.data()$CalibrationpH, col.spec = table.spec$CalibrationpH$col.spec) 
-  })
+  if (length(clean.data) > 0) {
+    final.data$CalibrationSpCond <- callModule(dataViewAndEdit, id = "CalibrationSpCond", data = clean.data$CalibrationSpCond, col.spec = table.spec$CalibrationSpCond$col.spec)
+    final.data$CalibrationDO <- callModule(dataViewAndEdit, id = "CalibrationDO", data = clean.data$CalibrationDO, col.spec = table.spec$CalibrationDO$col.spec)
+    final.data$CalibrationpH <- callModule(dataViewAndEdit, id = "CalibrationpH", data = clean.data$CalibrationpH, col.spec = table.spec$CalibrationpH$col.spec) 
+    
+  }
+  
   
   # Data upload
   observeEvent(input$submit, {
@@ -388,21 +352,15 @@ server <- function(input, output, session) {
     })
     success
   })
-
-    
+  
+  
   # Handle events
   observeEvent(upload.success(), {
     if (upload.success()) {
       # Show "done" and "import more" buttons
       shinyjs::show("next.done")
-      shinyjs::show("back.startover")
       shinyjs::hide("back.review")
       shinyjs::disable("next.review")
-      # Reset file import
-      data.files(NULL)
-      reset("files.in")
-      shinyjs::hide("import.summary")
-      shinyjs::hide("data.imported")
     }
   })
   
@@ -433,27 +391,10 @@ server <- function(input, output, session) {
     shinyjs::show("import.card")
   })
   
-  # Go back to import screen after data have been uploaded to database
-  onclick("btn.back.startover", {
-    shinyjs::hide("upload.card")
-    shinyjs::hide("back.startover")
-    shinyjs::hide("next.done")
-    shinyjs::show("next.review")
-    shinyjs::show("import.card")
-    shinyjs::enable("submit")
-    shinyjs::hide("submit.success.msg")
-  })
-  
   # Go back to home screen after data have been uploaded to database
   onclick("btn.next.done", {
-    shinyjs::hide("upload.card")
-    shinyjs::hide("back.startover")
-    shinyjs::hide("next.done")
-    # TODO: When data browser (or home screen with instructions?) is implemented, go there instead
-    shinyjs::show("next.review")
-    shinyjs::show("import.card")
-    shinyjs::enable("submit")
-    shinyjs::hide("submit.success.msg")
+    js$closeWindow()
+    stopApp()
   })
 }
 
