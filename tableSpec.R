@@ -3,8 +3,8 @@ library(pool)
 # Database connection
 my.pool <- dbPool(drv = odbc::odbc(),
                Driver = "SQL Server Native Client 11.0",
-               Server = "INPLAKE36792JNX\\SARAH_LOCAL",
-               Database = "MOJN_SharedTables",
+               Server = "INPLAKE52V\\MOJN",
+               Database = "Testing_MOJN_SharedTables",
                Trusted_Connection = "Yes")
 
 onStop(function() {
