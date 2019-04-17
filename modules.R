@@ -2,6 +2,13 @@
 # Functions
 #---------------------------------------
 
+dataChanged <- function(new.data, old.data) {
+  values.changed <- any(new.data != old.data, na.rm = TRUE)
+  na.changed <- any(xor(is.na(new.data), is.na(old.data)))
+  
+  return (values.changed || na.changed)
+}
+
 readFiles <- function (file.paths, search.string = "*", col.types = NULL) {
   # Given a list of .csv file paths and file names, reads data into a data frame from files whose name matches the search string.
   #
@@ -180,6 +187,7 @@ dataViewAndEditUI <- function(id) {
       ),
       column(6, class = "col-md-6 col-lg-7 data-edit-col",
              h4("2 - Review Data and Correct as Needed"),
+             h5(class = "text-warning", "If you make changes, don't forget to save them. Otherwise, they will be lost when you select another row of data."),
              uiOutput(ns("data.edit"))  # Dynamically generated edit boxes will go here
       )
     )
@@ -276,21 +284,21 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   # Create a reactive expression so that observeEvent fires when a row is deselected
   rows_selected <- reactive(!is.null(input$data.view_rows_selected))
   
-  # Populate editable input boxes with values from the selected row
-  observeEvent(rows_selected(), {
-    # TODO: Check if there are unsaved changes in the input boxes before deselecting a row or selecting a new row
-    updateEditBoxes(session, edit.cols, input$data.view_rows_selected, data.in())
-  })
-  
   # Data table proxy for selecting rows
   dt.proxy <- dataTableProxy("data.view")
+  
+  # Populate editable input boxes with values from the selected row
+  observeEvent(rows_selected(), {
+    # Show and populate edit boxes
+    updateEditBoxes(session, edit.cols, input$data.view_rows_selected, data.in())
+  })
   
   # Save changes to data
   # TODO: Figure out why row gets deselected when data are saved
   observeEvent(input$save, {
     # Save the row number that was selected
     selected.row <- input$data.view_rows_selected
-    
+    # browser()
     # Don't do anything if there isn't exactly one selected row
     if (length(selected.row) == 1) {
       # Get the new values from the input boxes and coerce them to the correct data types
@@ -298,7 +306,9 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
       for (input.name in edit.cols$name) {
         input.type <- edit.cols$type[edit.cols$name == input.name]
         value <- input[[input.name]]
-        
+        if (trimws(value, "both") == "") {
+          value <- NA
+        }
         if (input.type == "numeric" | 
             (input.type == "select" & !is.na(as.numeric(value)))) {
           # If input is numeric or select with numeric pk, convert to numeric type
@@ -307,15 +317,14 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
           value <- format(value)
         } else if (input.type == "time") {
           value <- as.POSIXlt.character(value, tryFormats = c("%I:%M %p","%I:%M:%S %p", "%I %p", "%H:%M", "%H:%M:%S")) %>%
-            format("%H:%M:%S")
+            format("%H:%M")
         }
-        
         updated.row[1, input.name] <- value
       }
       
       #Assign the new values to the data frame
       new.data <- data.in()
-      data.changed <- any(new.data[input$data.view_rows_selected, edit.cols$name] != updated.row[1, ])
+      data.changed <- dataChanged(new.data[input$data.view_rows_selected, edit.cols$name], updated.row[1, ])
       if (data.changed || is.na(data.changed)) {
         new.data[input$data.view_rows_selected, edit.cols$name] <- updated.row[1, ]
         data.in(new.data)
