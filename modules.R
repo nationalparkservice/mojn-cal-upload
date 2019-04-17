@@ -107,15 +107,13 @@ makeEditBoxes <- function(session, edit.cols, col.spec) {
   }
   
   # Convert edit boxes to tag list and add cancel/save/delete buttons
-  edit.box.cols <- tagList(fluidRow(edit.box.cols))
-  delete.button <- actionButton(session$ns("delete"), "Delete")
-  cancel.button <- actionButton(session$ns("cancel"), "Cancel")
-  save.button <- actionButton(session$ns("save"), "Save")
+  delete.button <- actionButton(session$ns("delete"), "Delete", class = "btn btn-danger")
+  cancel.button <- actionButton(session$ns("cancel"), "Cancel", class = "btn btn-warning")
+  save.button <- actionButton(session$ns("save"), "Save", class = "btn btn-success")
   buttons <- tagList(fluidRow(
-    column(12, align = "center", delete.button, cancel.button, save.button)
+    column(12, align = "right", delete.button, cancel.button, save.button)
   ))
-  edit.box.cols <- tagList(edit.box.cols, buttons)
-  
+  edit.box.cols <- tagList(fluidRow(edit.box.cols), buttons)
   return(edit.box.cols)
 }
 
@@ -176,12 +174,12 @@ dataViewAndEditUI <- function(id) {
   
   tagList(
     fluidRow(
-      column(4,
-             h4("Select a Calibration"),
+      column(6, class = "col-md-6 col-lg-5 data-review-col",
+             h4("1 - Select a Calibration"),
              dataTableOutput(ns("data.view"))  # Data table UI for viewing data and selecting a row     
       ),
-      column(8,
-             h4("Review Data and Correct as Needed"),
+      column(6, class = "col-md-6 col-lg-7 data-edit-col",
+             h4("2 - Review Data and Correct as Needed"),
              uiOutput(ns("data.edit"))  # Dynamically generated edit boxes will go here
       )
     )

@@ -1,0 +1,48 @@
+body {
+  box-sizing: border-box;
+}
+
+/* Increase spacing between cards and top nav */
+#import-card, #review-card, #upload-card {
+  margin-top: 5rem;
+}
+
+#review-card {
+  padding-right: 6rem;
+  padding-left: 6rem;
+}
+
+/* Increase spacing below pill navigation */
+.nav-pills {
+  margin-bottom: 2rem;
+}
+
+/* Remove max width from inputs so that delete/cancel/save buttons line up properly */
+.shiny-input-container:not(.shiny-input-container-inline){
+  width: auto;
+}
+
+/* Background for data edit boxes */
+.data-edit-col {
+  background-color: #f8f8f8;
+  padding-bottom: 1rem;
+
+}
+
+/* Increase spacing between cards and top nav by less on smaller windows*/
+@media (max-width: 768px) {
+  #import-card, #review-card, #upload-card {
+    margin-top: 2rem;
+  }
+  .data-edit-col {
+    margin-top: 3rem;
+    background-color: #ffffff;
+  }
+}
+
+@media (max-width: 992px) {
+  #review-card {
+    padding-right: 3rem;
+    padding-left: 3rem;
+  }
+}
