@@ -63,9 +63,11 @@ ui <- tagList(
                                             tags$div(class = "panel-body",
                                                      fluidRow(
                                                        column(12, align = "center",
-                                                              actionButton("submit", "Submit data"),
-                                                              hidden(h4(id = "submit.success.msg", "Success!")),
-                                                              hidden(p(id = "submit.success.info", "Data were successfully uploaded to the database. You may now close this browser tab."))
+                                                              h2(id = "submit-header", "Submit data to the database"),
+                                                              p(id = "submit-instructions", "You are about to submit water quality calibration data. Before you click submit, make sure that you have thoroughly reviewed all of the data."),
+                                                              hidden(h2(id = "submit.success.msg", "Success!")),
+                                                              hidden(p(id = "submit.success.info", "Data were successfully added to the database. You may now close this browser tab.")),
+                                                              actionButton("submit", class = "btn btn-lg btn-success", "Submit data")
                                                        )
                                                      )
                                             )
@@ -308,6 +310,8 @@ server <- function(input, output, session) {
       shinyjs::disable("submit")
       shinyjs::show("submit.success.msg")
       shinyjs::show("submit.success.info")
+      shinyjs::hide("submit-header")
+      shinyjs::hide("submit-instructions")
       success <- TRUE
     },
     error = function(c) {
