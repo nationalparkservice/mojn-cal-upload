@@ -44,15 +44,19 @@ singleSelectDT <- function (data, col.names) {
   for (i in 1:(length(col.names)-1)) {
     sort <- append(sort, list(list(i, "asc")))
   }
-  datatable(data, selection = list(
-    mode = "single",
-    target = "row"),
-    colnames = col.names,
-    rownames = FALSE,
-    options = list(
-      order = sort,
-      dom = 't'
-    )
+  datatable(data, 
+            selection = list(
+              mode = "single",
+              target = "row"),
+            width = "100%",
+            colnames = col.names,
+            rownames = FALSE,
+            options = list(
+              order = sort,
+              dom = 't',
+              scrollX = "true",
+              paging = "true"
+            )
   )
 }
 
