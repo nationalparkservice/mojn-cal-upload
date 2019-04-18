@@ -191,7 +191,8 @@ dataViewAndEditUI <- function(id) {
       ),
       column(6, class = "col-md-6 col-lg-7 data-edit-col",
              h4("2 - Review Data and Correct as Needed"),
-             h5(class = "text-warning", "If you make changes, don't forget to save them. Otherwise, they will be lost when you select another row of data."),
+             hidden(h5(class = "text-warning", id = ns("save-cal-text"), "If you make changes, don't forget to save them. Otherwise, they will be lost when you select another row of data.")),
+             hidden(h5(class = "text-info", id = ns("select-cal-text"), "Select a calibration to view and edit its data")),
              uiOutput(ns("data.edit"))  # Dynamically generated edit boxes will go here
       )
     )
@@ -279,10 +280,7 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   
   # Add edit boxes to UI
   output$data.edit <- renderUI({
-    # only show edit boxes if data are present
-    if (nrow(data.in()) > 0) {
-      makeEditBoxes(session, edit.cols, col.spec)
-    }
+    makeEditBoxes(session, edit.cols, col.spec)
   })
   
   # Create a reactive expression so that observeEvent fires when a row is deselected
@@ -292,9 +290,20 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   dt.proxy <- dataTableProxy("data.view")
   
   # Populate editable input boxes with values from the selected row
-  observeEvent(rows_selected(), {
-    # Show and populate edit boxes
-    updateEditBoxes(session, edit.cols, input$data.view_rows_selected, data.in())
+  observeEvent(rows_selected(), ignoreInit = TRUE, {
+    if (rows_selected()) {
+      # Show and populate edit boxes
+      shinyjs::show("save-cal-text")
+      shinyjs::hide("select-cal-text")
+      shinyjs::show("data.edit")
+      updateEditBoxes(session, edit.cols, input$data.view_rows_selected, data.in())
+    } else {
+      # Hide edit boxes
+      shinyjs::hide("save-cal-text")
+      shinyjs::show("select-cal-text")
+      shinyjs::hide("data.edit")
+    }
+    
   })
   
   # Save changes to data
