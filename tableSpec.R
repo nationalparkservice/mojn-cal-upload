@@ -192,11 +192,11 @@ pH.col.spec <- list(CalibrationDate = list(label = "Date",
                                            view = TRUE,
                                            edit = TRUE,
                                            type = "time"),
-                    StandardValue_pH = list(label = "Standard",
+                    StandardValue_pH = list(label = "Std.",
                                             view = TRUE,
                                             edit = TRUE,
                                             type = "numeric"),
-                    TemperatureCorrectedStd_pH = list(label = "Temp. corrected standard",
+                    TemperatureCorrectedStd_pH = list(label = "Temp. corrected std.",
                                                       view = FALSE,
                                                       edit = TRUE,
                                                       type = "numeric"),
@@ -251,7 +251,7 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                         col.spec = DO.col.spec,
                                         data.manip = function(data)({
                                           data <- data %>%
-                                            mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S"),
+                                            mutate(CalibrationTime = format(as.POSIXct(CalibrationTime, format = "%H:%M"), "%H:%M"),
                                                    CalibrationDate = format(CalibrationDate, "%Y-%m-%d"),
                                                    DateCreated = format(DateCreated, "%Y-%m-%d %H:%M:%S")) %>%  # Format dates and times so they display properly
                                             left_join(db.ref.wqinstr, by = c("DOInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
@@ -277,7 +277,7 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                         col.spec = pH.col.spec,
                                         data.manip = function(data)({
                                           data <- data %>%
-                                            mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S"),
+                                            mutate(CalibrationTime = format(as.POSIXct(CalibrationTime, format = "%H:%M"), "%H:%M"),
                                                    CalibrationDate = format(CalibrationDate, "%Y-%m-%d"),
                                                    DateCreated = format(DateCreated, "%Y-%m-%d %H:%M:%S")) %>%  # Format dates and times so they display properly
                                             left_join(db.ref.wqinstr, by = c("pHInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
@@ -300,7 +300,7 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                             col.spec = SpCond.col.spec,
                                             data.manip = function(data)({
                                               data <- data %>%
-                                                mutate(CalibrationTime = format(CalibrationTime, "%H:%M:%S"),
+                                                mutate(CalibrationTime = format(as.POSIXct(CalibrationTime, format = "%H:%M"), "%H:%M"),
                                                        CalibrationDate = format(CalibrationDate, "%Y-%m-%d"),
                                                        DateCreated = format(DateCreated, "%Y-%m-%d %H:%M:%S")) %>%  # Format dates and times so they display properly
                                                 left_join(db.ref.wqinstr, by = c("SpCondInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table

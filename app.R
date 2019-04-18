@@ -13,16 +13,20 @@ library(shinythemes)
 source("tableSpec.R")
 source("modules.R")
 
+# Global vars
+path.to.data <- "M:\\MONITORING\\WQCalibration\\DataFromFilemaker"
+
 # Define UI for application that imports calibration data from .csv and uploads to database
 ui <- tagList(
   useShinyjs(),
+  tags$head(tags$link(rel = "stylesheet", type = "text/css", href = "style.css")),
   navbarPage("Water Quality Calibration Data",
              tabPanel("Upload",
                       fluidPage(
                         fluidRow(
                           column(10, offset = 1,
                                  # Data import card
-                                 tags$div(id = "import.card", class = "panel panel-default ",
+                                 tags$div(id = "import-card", class = "panel panel-default ",
                                           tags$div(class = "panel-body",
                                                    fluidRow(
                                                      column(2),
@@ -36,10 +40,10 @@ ui <- tagList(
                                  ),
                                  # Data review and edit card
                                  hidden(
-                                   tags$div(id = "review.card", class = "panel panel-default ",
+                                   tags$div(id = "review-card", class = "panel panel-default ",
                                             tags$div(class = "panel-body",
                                                      fluidRow(
-                                                       column(10, offset = 1,
+                                                       column(12,
                                                               tabsetPanel(id = "review.tabs", type = "pills",
                                                                           tabPanel("Specific Conductance", id = "spcond.tab",
                                                                                    dataViewAndEditUI("CalibrationSpCond")
@@ -58,13 +62,15 @@ ui <- tagList(
                                  ),
                                  # Data upload card
                                  hidden(
-                                   tags$div(id = "upload.card", class = "panel panel-default ",
+                                   tags$div(id = "upload-card", class = "panel panel-default ",
                                             tags$div(class = "panel-body",
                                                      fluidRow(
                                                        column(12, align = "center",
-                                                              actionButton("submit", "Submit data"),
-                                                              hidden(h4(id = "submit.success.msg", "Success!")),
-                                                              hidden(p(id = "submit.success.info", "Data were successfully uploaded to the database. You may now close this browser tab."))
+                                                              h2(id = "submit-header", "Submit data to the database"),
+                                                              p(id = "submit-instructions", "You are about to submit water quality calibration data. Before you click submit, make sure that you have thoroughly reviewed all of the data."),
+                                                              hidden(h2(id = "submit.success.msg", "Success!")),
+                                                              hidden(p(id = "submit.success.info", "Data were successfully added to the database. You may now close this browser tab.")),
+                                                              actionButton("submit", class = "btn btn-lg btn-success", "Submit data")
                                                        )
                                                      )
                                             )
@@ -91,9 +97,9 @@ ui <- tagList(
                         )
                         
                       )
-             ),
-             tabPanel("View"),
-             tabPanel("QA/QC")
+             )#,
+             # tabPanel("View"),
+             # tabPanel("QA/QC")
   )
 )
 
@@ -108,8 +114,7 @@ server <- function(input, output, session) {
   data.imports <- list()
   
   # Get list of imported files
-  path.to.data <- "M:\\MONITORING\\WQCalibration\\DataFromFilemaker"
-  data.file.names <- list.files("M:\\MONITORING\\WQCalibration\\DataFromFilemaker", pattern = ".*Calibration(SpCond|DO|pH)\\.csv")
+  data.file.names <- list.files(path.to.data, pattern = ".*Calibration(SpCond|DO|pH)\\.csv")
   data.file.paths <- paste(path.to.data, data.file.names, sep = "\\")
   
   # Get data from uploaded files
@@ -160,17 +165,11 @@ server <- function(input, output, session) {
     filter(!(GUID %in% existing.pH$GUID))
   
   
-  importStatusText <- function(count, record.type = "imported") {
+  importStatusText <- function(count) {
     if (count == 0) {
-      if (record.type == "imported") {
-        txt <- "No calibrations imported."
-      } else {
-        txt <- ""
-      }
-    } else if (record.type == "ignored") {
-      txt <- paste(count, "calibration(s) were omitted because they are already in the database.", sep = " ")
-    } else if (record.type == "imported") {
-      txt <- paste("Imported", count, "calibration(s).", sep = " ")
+        txt <- "No new calibration data found."
+    } else {
+      txt <- paste(count, "calibration(s) pending review.", sep = " ")
     }
     return(txt)
   }
@@ -188,12 +187,10 @@ server <- function(input, output, session) {
     ph.ignored.count <- nrow(existing.pH)
     
     summary <- data_frame(metric = c("Specific Conductance", "Dissolved Oxygen", "pH"),
-                          import.count = c(spcond.count, do.count, ph.count),
-                          ignored.count = c(spcond.ignored.count, do.ignored.count, ph.ignored.count))
+                          import.count = c(spcond.count, do.count, ph.count))
     
     summary <- summary %>%
       mutate(import.message = paste(vImportStatusText(import.count), 
-                                    vImportStatusText(ignored.count, record.type = "ignored"), 
                                     sep = " ")) %>%
       select(metric, import.message)
     
@@ -235,8 +232,8 @@ server <- function(input, output, session) {
     # Advance from import screen to review screen on next button click
     onclick("btn.next.review", {
       shinyjs::hide("next.review")
-      shinyjs::hide("import.card")
-      shinyjs::show("review.card")
+      shinyjs::hide("import-card")
+      shinyjs::show("review-card")
       shinyjs::show("next.upload")
       shinyjs::show("back.import")
       for (tab in tabs.to.show) {
@@ -315,6 +312,8 @@ server <- function(input, output, session) {
       shinyjs::disable("submit")
       shinyjs::show("submit.success.msg")
       shinyjs::show("submit.success.info")
+      shinyjs::hide("submit-header")
+      shinyjs::hide("submit-instructions")
       success <- TRUE
     },
     error = function(c) {
@@ -365,27 +364,27 @@ server <- function(input, output, session) {
   onclick("btn.next.upload", {
     shinyjs::hide("next.upload")
     shinyjs::hide("back.import")
-    shinyjs::hide("review.card")
-    shinyjs::show("upload.card")
+    shinyjs::hide("review-card")
+    shinyjs::show("upload-card")
     shinyjs::show("back.review")
   })
   
   # Go back to review screen from upload screen
   onclick("btn.back.review", {
-    shinyjs::hide("upload.card")
+    shinyjs::hide("upload-card")
     shinyjs::hide("back.review")
     shinyjs::show("next.upload")
     shinyjs::show("back.import")
-    shinyjs::show("review.card")
+    shinyjs::show("review-card")
   })
   
   # Go back to import screen from review screen
   onclick("btn.back.import", {
-    shinyjs::hide("review.card")
+    shinyjs::hide("review-card")
     shinyjs::hide("next.upload")
     shinyjs::hide("back.import")
     shinyjs::show("next.review")
-    shinyjs::show("import.card")
+    shinyjs::show("import-card")
   })
 }
 

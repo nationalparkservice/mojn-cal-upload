@@ -2,6 +2,13 @@
 # Functions
 #---------------------------------------
 
+dataChanged <- function(new.data, old.data) {
+  values.changed <- any(new.data != old.data, na.rm = TRUE)
+  na.changed <- any(xor(is.na(new.data), is.na(old.data)))
+  
+  return (values.changed || na.changed)
+}
+
 readFiles <- function (file.paths, search.string = "*", col.types = NULL) {
   # Given a list of .csv file paths and file names, reads data into a data frame from files whose name matches the search string.
   #
@@ -37,15 +44,19 @@ singleSelectDT <- function (data, col.names) {
   for (i in 1:(length(col.names)-1)) {
     sort <- append(sort, list(list(i, "asc")))
   }
-  datatable(data, selection = list(
-    mode = "single",
-    target = "row"),
-    colnames = col.names,
-    rownames = FALSE,
-    options = list(
-      order = sort,
-      dom = 't'
-    )
+  datatable(data, 
+            selection = list(
+              mode = "single",
+              target = "row"),
+            width = "100%",
+            colnames = col.names,
+            rownames = FALSE,
+            options = list(
+              order = sort,
+              dom = 't',
+              scrollX = "true",
+              paging = "true"
+            )
   )
 }
 
@@ -107,15 +118,13 @@ makeEditBoxes <- function(session, edit.cols, col.spec) {
   }
   
   # Convert edit boxes to tag list and add cancel/save/delete buttons
-  edit.box.cols <- tagList(fluidRow(edit.box.cols))
-  delete.button <- actionButton(session$ns("delete"), "Delete")
-  cancel.button <- actionButton(session$ns("cancel"), "Cancel")
-  save.button <- actionButton(session$ns("save"), "Save")
+  delete.button <- actionButton(session$ns("delete"), "Delete", class = "btn btn-danger")
+  cancel.button <- actionButton(session$ns("cancel"), "Cancel", class = "btn btn-warning")
+  save.button <- actionButton(session$ns("save"), "Save", class = "btn btn-success")
   buttons <- tagList(fluidRow(
-    column(12, align = "center", delete.button, cancel.button, save.button)
+    column(12, align = "right", delete.button, cancel.button, save.button)
   ))
-  edit.box.cols <- tagList(edit.box.cols, buttons)
-  
+  edit.box.cols <- tagList(fluidRow(edit.box.cols), buttons)
   return(edit.box.cols)
 }
 
@@ -176,12 +185,14 @@ dataViewAndEditUI <- function(id) {
   
   tagList(
     fluidRow(
-      column(4,
-             h4("Select a Calibration"),
+      column(6, class = "col-md-6 col-lg-5 data-review-col",
+             h4("1 - Select a Calibration"),
              dataTableOutput(ns("data.view"))  # Data table UI for viewing data and selecting a row     
       ),
-      column(8,
-             h4("Review Data and Correct as Needed"),
+      column(6, class = "col-md-6 col-lg-7 data-edit-col",
+             h4("2 - Review Data and Correct as Needed"),
+             hidden(h5(class = "text-warning", id = ns("save-cal-text"), "If you make changes, don't forget to save them. Otherwise, they will be lost when you select another row of data.")),
+             hidden(h5(class = "text-info", id = ns("select-cal-text"), "Select a calibration to view and edit its data")),
              uiOutput(ns("data.edit"))  # Dynamically generated edit boxes will go here
       )
     )
@@ -269,30 +280,38 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   
   # Add edit boxes to UI
   output$data.edit <- renderUI({
-    # only show edit boxes if data are present
-    if (nrow(data.in()) > 0) {
-      makeEditBoxes(session, edit.cols, col.spec)
-    }
+    makeEditBoxes(session, edit.cols, col.spec)
   })
   
   # Create a reactive expression so that observeEvent fires when a row is deselected
   rows_selected <- reactive(!is.null(input$data.view_rows_selected))
   
-  # Populate editable input boxes with values from the selected row
-  observeEvent(rows_selected(), {
-    # TODO: Check if there are unsaved changes in the input boxes before deselecting a row or selecting a new row
-    updateEditBoxes(session, edit.cols, input$data.view_rows_selected, data.in())
-  })
-  
   # Data table proxy for selecting rows
   dt.proxy <- dataTableProxy("data.view")
+  
+  # Populate editable input boxes with values from the selected row
+  observeEvent(rows_selected(), ignoreInit = TRUE, {
+    if (rows_selected()) {
+      # Show and populate edit boxes
+      shinyjs::show("save-cal-text")
+      shinyjs::hide("select-cal-text")
+      shinyjs::show("data.edit")
+      updateEditBoxes(session, edit.cols, input$data.view_rows_selected, data.in())
+    } else {
+      # Hide edit boxes
+      shinyjs::hide("save-cal-text")
+      shinyjs::show("select-cal-text")
+      shinyjs::hide("data.edit")
+    }
+    
+  })
   
   # Save changes to data
   # TODO: Figure out why row gets deselected when data are saved
   observeEvent(input$save, {
     # Save the row number that was selected
     selected.row <- input$data.view_rows_selected
-    
+    # browser()
     # Don't do anything if there isn't exactly one selected row
     if (length(selected.row) == 1) {
       # Get the new values from the input boxes and coerce them to the correct data types
@@ -300,7 +319,9 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
       for (input.name in edit.cols$name) {
         input.type <- edit.cols$type[edit.cols$name == input.name]
         value <- input[[input.name]]
-        
+        if (trimws(value, "both") == "") {
+          value <- NA
+        }
         if (input.type == "numeric" | 
             (input.type == "select" & !is.na(as.numeric(value)))) {
           # If input is numeric or select with numeric pk, convert to numeric type
@@ -309,15 +330,14 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
           value <- format(value)
         } else if (input.type == "time") {
           value <- as.POSIXlt.character(value, tryFormats = c("%I:%M %p","%I:%M:%S %p", "%I %p", "%H:%M", "%H:%M:%S")) %>%
-            format("%H:%M:%S")
+            format("%H:%M")
         }
-        
         updated.row[1, input.name] <- value
       }
       
       #Assign the new values to the data frame
       new.data <- data.in()
-      data.changed <- any(new.data[input$data.view_rows_selected, edit.cols$name] != updated.row[1, ])
+      data.changed <- dataChanged(new.data[input$data.view_rows_selected, edit.cols$name], updated.row[1, ])
       if (data.changed || is.na(data.changed)) {
         new.data[input$data.view_rows_selected, edit.cols$name] <- updated.row[1, ]
         data.in(new.data)
