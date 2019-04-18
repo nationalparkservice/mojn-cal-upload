@@ -13,6 +13,9 @@ library(shinythemes)
 source("tableSpec.R")
 source("modules.R")
 
+# Global vars
+path.to.data <- "M:\\MONITORING\\WQCalibration\\DataFromFilemaker"
+
 # Define UI for application that imports calibration data from .csv and uploads to database
 ui <- tagList(
   useShinyjs(),
@@ -111,8 +114,7 @@ server <- function(input, output, session) {
   data.imports <- list()
   
   # Get list of imported files
-  path.to.data <- "M:\\MONITORING\\WQCalibration\\DataFromFilemaker"
-  data.file.names <- list.files("M:\\MONITORING\\WQCalibration\\DataFromFilemaker", pattern = ".*Calibration(SpCond|DO|pH)\\.csv")
+  data.file.names <- list.files(path.to.data, pattern = ".*Calibration(SpCond|DO|pH)\\.csv")
   data.file.paths <- paste(path.to.data, data.file.names, sep = "\\")
   
   # Get data from uploaded files
