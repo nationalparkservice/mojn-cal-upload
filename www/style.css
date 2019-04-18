@@ -7,12 +7,13 @@ body {
   margin-top: 5rem;
 }
 
+/* Data review card */
 #review-card {
   padding-right: 6rem;
   padding-left: 6rem;
 }
 
-/* Increase spacing below pill navigation */
+/* Pill navigation */
 .nav-pills {
   margin-bottom: 2rem;
 }
@@ -22,21 +23,36 @@ body {
   width: auto;
 }
 
-/* Background for data edit boxes */
+/* Data edit boxes */
 .data-edit-col {
   background-color: #f8f8f8;
   padding-bottom: 1rem;
-
 }
 
-/* Increase spacing between cards and top nav by less on smaller windows*/
+/* Calibration list */
+.data-review-col {
+  background-color: #f8f8f8;
+  padding-bottom: 1rem;
+  border-right: solid #ffffff 2rem;
+}
+
+
 @media (max-width: 768px) {
+  /* Increase spacing between cards and top nav by less on smaller windows */
   #import-card, #review-card, #upload-card {
     margin-top: 2rem;
   }
+  
+  /* Data edit boxes */
   .data-edit-col {
     margin-top: 3rem;
-    background-color: #ffffff;
+    padding-top: 1rem;
+  }
+  
+  /* Calibration list */
+  .data-review-col {
+    padding-top: 1rem;
+    border-right: none;
   }
 }
 
