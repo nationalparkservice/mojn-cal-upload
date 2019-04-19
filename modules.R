@@ -89,15 +89,15 @@ makeEditBoxes <- function(session, edit.cols, col.spec) {
     
     # Create edit box based on column type "select", "text", "notes", "numeric", "time", or "date"
     if (col$type == "text") {
-      edit.boxes[col$name] <- list(textInput(inputId = session$ns(col$name), label = col$label, value = ""))
+      edit.boxes[col$name] <- list(textInput(inputId = session$ns(col$name), label = if_else(col$required, paste0("*", col$label), col$label), value = ""))
     } else if (col$type == "numeric") {
-      edit.boxes[col$name] <- list(numericInput(inputId = session$ns(col$name), label = col$label, value = NA))
+      edit.boxes[col$name] <- list(numericInput(inputId = session$ns(col$name), label = if_else(col$required, paste0("*", col$label), col$label), value = NA))
     } else if (col$type == "date") {
-      edit.boxes[col$name] <- list(dateInput(inputId = session$ns(col$name), label = col$label, value = NA))
+      edit.boxes[col$name] <- list(dateInput(inputId = session$ns(col$name), label = if_else(col$required, paste0("*", col$label), col$label), value = NA))
     } else if (col$type == "time") {
-      edit.boxes[col$name] <- list(textInput(inputId = session$ns(col$name), label = col$label, value = ""))
+      edit.boxes[col$name] <- list(textInput(inputId = session$ns(col$name), label = if_else(col$required, paste0("*", col$label), col$label), value = ""))
     } else if (col$type == "notes") {
-      edit.boxes[col$name] <- list(textAreaInput(inputId = session$ns(col$name), label = col$label, value = ""))
+      edit.boxes[col$name] <- list(textAreaInput(inputId = session$ns(col$name), label = if_else(col$required, paste0("*", col$label), col$label), value = ""))
     } else if (col$type == "select") {
       lookup.tbl <- col.spec[[col$name]]$lookup  # get lookup table
       lookup.pk <- col.spec[[col$name]]$lookup.pk  # primary key of lookup table
@@ -105,7 +105,7 @@ makeEditBoxes <- function(session, edit.cols, col.spec) {
       
       options <- setNames(lookup.tbl[[lookup.pk]], lookup.tbl[[lookup.text]])  # dropdown options with primary key as value
       
-      edit.boxes[col$name] <- list(selectInput(inputId = session$ns(col$name), label = col$label,
+      edit.boxes[col$name] <- list(selectInput(inputId = session$ns(col$name), label = if_else(col$required, paste0("*", col$label), col$label),
                                                choices = c("", options),
                                                selected = NA))
     }
@@ -236,13 +236,15 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
     }
     # Get list of columns to include in edit boxes
     if (col.spec[[col]]$edit) {
-      edit.cols <- bind_rows(edit.cols, c(name = col, label = col.spec[[col]]$label, type = col.spec[[col]]$type))
+      edit.cols <- bind_rows(edit.cols, c(name = col, label = col.spec[[col]]$label, type = col.spec[[col]]$type, required = col.spec[[col]]$required))
     }
     # Get list of fk columns
     if (!is_empty(col.spec[[col]]$lookup)) {
       fk.cols <- c(fk.cols, col)
     }
   }
+  
+  edit.cols$required <- as.logical(edit.cols$required)
   
   # Rename fk columns 
   table.cols[which(table.cols$name %in% fk.cols), "name"] <- paste0(table.cols$name[which(table.cols$name %in% fk.cols)], "_lookup")
@@ -311,7 +313,7 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
   observeEvent(input$save, {
     # Save the row number that was selected
     selected.row <- input$data.view_rows_selected
-    # browser()
+    
     # Don't do anything if there isn't exactly one selected row
     if (length(selected.row) == 1) {
       # Get the new values from the input boxes and coerce them to the correct data types
@@ -319,14 +321,14 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
       for (input.name in edit.cols$name) {
         input.type <- edit.cols$type[edit.cols$name == input.name]
         value <- input[[input.name]]
-        if (trimws(value, "both") == "") {
+        if (length(value) == 0 || is.na(value) || trimws(value, "both") == "") {
           value <- NA
         }
         if (input.type == "numeric" | 
             (input.type == "select" & !is.na(as.numeric(value)))) {
           # If input is numeric or select with numeric pk, convert to numeric type
           value <- as.numeric(value)
-        } else if (input.type == "date") {
+        } else if (!is.na(value) && input.type == "date") {
           value <- format(value)
         } else if (input.type == "time") {
           value <- as.POSIXlt.character(value, tryFormats = c("%I:%M %p","%I:%M:%S %p", "%I %p", "%H:%M", "%H:%M:%S")) %>%
@@ -338,16 +340,21 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
       #Assign the new values to the data frame
       new.data <- data.in()
       data.changed <- dataChanged(new.data[input$data.view_rows_selected, edit.cols$name], updated.row[1, ])
-      if (data.changed || is.na(data.changed)) {
+      data.missing <- any(is.na(updated.row[1, edit.cols$name[edit.cols$required]])) ||
+                            any(is.null(updated.row[1, edit.cols$name[edit.cols$required]]))
+      if (data.missing) {
+        # Show an error message and don't save data if required fields are blank
+        showNotification("Error: Required fields left blank. Data not saved.", type = "error")
+      } else if (data.changed || is.na(data.changed)) {
         new.data[input$data.view_rows_selected, edit.cols$name] <- updated.row[1, ]
+        dt.proxy %>% replaceData(new.data)
         data.in(new.data)
         showNotification("Data saved", type = "message")
+        # Re-select the row that was selected
+        dt.proxy %>% selectRows(selected.row)
       } else {
         showNotification("No changes to save", type = "warning") 
       }
-      
-      # Re-select the row that was selected
-      dt.proxy %>% selectRows(selected.row)
     }
   })
   
