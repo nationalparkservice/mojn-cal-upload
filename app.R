@@ -66,6 +66,7 @@ ui <- tagList(
                                             tags$div(class = "panel-body",
                                                      fluidRow(
                                                        column(12, align = "center",
+                                                              dataTableOutput("data-issues"),
                                                               h2(id = "submit-header", "Submit data to the database"),
                                                               p(id = "submit-instructions", "You are about to submit water quality calibration data. Before you click submit, make sure that you have thoroughly reviewed all of the data."),
                                                               hidden(h2(id = "submit.success.msg", "Success!")),
@@ -268,9 +269,88 @@ server <- function(input, output, session) {
     final.data$CalibrationSpCond <- callModule(dataViewAndEdit, id = "CalibrationSpCond", data = clean.data$CalibrationSpCond, col.spec = table.spec$CalibrationSpCond$col.spec)
     final.data$CalibrationDO <- callModule(dataViewAndEdit, id = "CalibrationDO", data = clean.data$CalibrationDO, col.spec = table.spec$CalibrationDO$col.spec)
     final.data$CalibrationpH <- callModule(dataViewAndEdit, id = "CalibrationpH", data = clean.data$CalibrationpH, col.spec = table.spec$CalibrationpH$col.spec) 
-    
   }
   
+  # Show a list of possible data issues
+  output$`data-issues` <- renderDataTable({
+    sp.cond.issues <- tibble()
+    do.issues <- tibble()
+    ph.issues <- tibble()
+    
+    # Check for required fields
+    
+    # Check for correct SpCond standards
+    sp.cond.issues <- final.data$CalibrationSpCond() %>%
+      filter(StandardValue_microS_per_cm != 1413 & StandardValue_microS_per_cm != 10000) %>%
+      mutate(Issue = paste("Expected standard of 1413 or 10000, not", StandardValue_microS_per_cm), 
+             Parameter = "SpCond") %>%
+      select(Parameter, CalibrationDate, CalibrationTime, SpCondInstrumentID, Issue) %>%
+      rename(Instrument = SpCondInstrumentID)
+    
+    # Check for correct pH standards
+    ph.issues <- final.data$CalibrationpH() %>%
+      filter(StandardValue_pH != 4 & StandardValue_pH != 7 & StandardValue_pH != 10) %>%
+      mutate(Issue = paste("Expected standard of 4, 7, or 10, not", StandardValue_pH), 
+             Parameter = "pH") %>%
+      select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
+      rename(Instrument = pHInstrumentID)
+    
+    # Check that temperature is within acceptable calib. error
+    do.issues <- final.data$CalibrationDO() %>%
+      filter(abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C) > 0.2) %>%
+      mutate(Issue = paste("Pre- and post-calibration temperatures should be within 0.2 C of each other. Actual difference was", abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C), "C"), 
+             Parameter = "DO") %>%
+      select(Parameter, CalibrationDate, CalibrationTime, DOInstrumentID, Issue) %>%
+      rename(Instrument = DOInstrumentID)
+    
+    ph.issues <- ph.issues %>% bind_rows(
+      final.data$CalibrationpH() %>%
+      filter(abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C) > 0.2) %>%
+      mutate(Issue = paste("Pre- and post-calibration temperatures should be within 0.2 C of each other. Actual difference was", abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C), "C"), 
+             Parameter = "pH") %>%
+      select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
+      rename(Instrument = pHInstrumentID)
+    )
+    
+    # Check that sp. cond. is within acceptable calib. error
+    sp.cond.issues <- sp.cond.issues %>% bind_rows(
+      final.data$CalibrationSpCond() %>%
+        filter((abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm)/StandardValue_microS_per_cm > 0.03) & abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm) > 5) %>%
+        mutate(Issue = paste("Pre- and post-calibration readings should be within 5 \u03bcS/cm or 3% of each other. Actual difference was", abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm), "\u03bcS/cm"), 
+               Parameter = "SpCond") %>%
+        select(Parameter, CalibrationDate, CalibrationTime, SpCondInstrumentID, Issue) %>%
+        rename(Instrument = SpCondInstrumentID)
+    )
+    
+    # Check that DO is within acceptable calib. error
+    # TODO: Hydro team is still working on how to calculate this (if possible)
+    
+    # Check that pH is within acceptable calib. error
+    ph.issues <- ph.issues %>% bind_rows(
+      final.data$CalibrationpH() %>%
+        filter(abs(PostCalibrationReading_pH - StandardValue_pH) > 0.2) %>%
+        mutate(Issue = paste("Pre- and post-calibration readings should be within 0.2 units of each other. Actual difference was", abs(PostCalibrationReading_pH - StandardValue_pH)), 
+               Parameter = "pH") %>%
+        select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
+        rename(Instrument = pHInstrumentID)
+    )
+    
+    data.issues <- rbind(sp.cond.issues, do.issues, ph.issues) %>%
+      left_join(db.ref.wqinstr, by = c("Instrument" = "ID"), copy = TRUE) %>%
+      select(Parameter, CalibrationDate, CalibrationTime, Label, Issue) %>%
+      rename(Instrument = Label) %>%
+      arrange(Parameter, CalibrationDate, CalibrationTime, Instrument, Issue)
+    
+    if (nrow(data.issues) > 0) {
+      datatable(data.issues,
+                rownames = FALSE,
+                selection = "none",
+                colnames = c("Parameter", "Date", "Time", "Instrument", "Issue"),
+                options = list(dom = "b",
+                               ordering = FALSE)
+      )
+    }
+  })
   
   # Data upload
   observeEvent(input$submit, {
