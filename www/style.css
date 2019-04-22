@@ -18,6 +18,11 @@ body {
   margin-bottom: 2rem;
 }
 
+/* Data issues table */
+#data-issues {
+  margin-bottom: 3rem;
+}
+
 /* Remove max width from inputs so that delete/cancel/save buttons line up properly */
 .shiny-input-container:not(.shiny-input-container-inline){
   width: auto;

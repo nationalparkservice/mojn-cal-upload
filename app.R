@@ -66,8 +66,11 @@ ui <- tagList(
                                             tags$div(class = "panel-body",
                                                      fluidRow(
                                                        column(12, align = "center",
-                                                              dataTableOutput("data-issues"),
-                                                              h2(id = "submit-header", "Submit data to the database"),
+                                                              h2(id = "data-issues-header", "1 - Correct any remaining data issues"),
+                                                              hidden(p(id = "no-data-issues", "Automated checks found no problems in the data.")),
+                                                              hidden(p(id = "data-issues-text", "Please review the list of potential issues below. To make changes, go back to the Data Review screen. Be sure to save your edits before returning to this screen.")),
+                                                              hidden(dataTableOutput("data-issues")),
+                                                              h2(id = "submit-header", "2 - Submit data to the database"),
                                                               p(id = "submit-instructions", "You are about to submit water quality calibration data. Before you click submit, make sure that you have thoroughly reviewed all of the data."),
                                                               hidden(h2(id = "submit.success.msg", "Success!")),
                                                               hidden(p(id = "submit.success.info", "Data were successfully added to the database. You may now close this browser tab.")),
@@ -271,8 +274,8 @@ server <- function(input, output, session) {
     final.data$CalibrationpH <- callModule(dataViewAndEdit, id = "CalibrationpH", data = clean.data$CalibrationpH, col.spec = table.spec$CalibrationpH$col.spec) 
   }
   
-  # Show a list of possible data issues
-  output$`data-issues` <- renderDataTable({
+  # Generate a list of possible data issues
+  data.issues <- reactive({
     sp.cond.issues <- tibble()
     do.issues <- tibble()
     ph.issues <- tibble()
@@ -305,11 +308,11 @@ server <- function(input, output, session) {
     
     ph.issues <- ph.issues %>% bind_rows(
       final.data$CalibrationpH() %>%
-      filter(abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C) > 0.2) %>%
-      mutate(Issue = paste("Pre- and post-calibration temperatures should be within 0.2 C of each other. Actual difference was", abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C), "C"), 
-             Parameter = "pH") %>%
-      select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
-      rename(Instrument = pHInstrumentID)
+        filter(abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C) > 0.2) %>%
+        mutate(Issue = paste("Pre- and post-calibration temperatures should be within 0.2 C of each other. Actual difference was", abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C), "C"), 
+               Parameter = "pH") %>%
+        select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
+        rename(Instrument = pHInstrumentID)
     )
     
     # Check that sp. cond. is within acceptable calib. error
@@ -341,13 +344,25 @@ server <- function(input, output, session) {
       rename(Instrument = Label) %>%
       arrange(Parameter, CalibrationDate, CalibrationTime, Instrument, Issue)
     
-    if (nrow(data.issues) > 0) {
-      datatable(data.issues,
-                rownames = FALSE,
-                selection = "none",
+    data.issues
+  })
+  
+  # Show a list of possible data issues
+  output$`data-issues` <- renderDataTable({
+    if (nrow(data.issues()) > 0) {
+      datatable(data.issues(), 
+                selection = list(
+                  mode = "single",
+                  target = "row"),
+                width = "100%",
                 colnames = c("Parameter", "Date", "Time", "Instrument", "Issue"),
-                options = list(dom = "b",
-                               ordering = FALSE)
+                rownames = FALSE,
+                options = list(
+                  dom = 't',
+                  ordering = FALSE,
+                  scrollX = "true",
+                  paging = "true"
+                )
       )
     }
   })
@@ -447,6 +462,16 @@ server <- function(input, output, session) {
     shinyjs::hide("review-card")
     shinyjs::show("upload-card")
     shinyjs::show("back.review")
+    
+    if (nrow(data.issues()) > 0) {
+      shinyjs::show("data-issues")
+      shinyjs::hide("no-data-issues")
+      shinyjs::show("data-issues-text")
+    } else {
+      shinyjs::hide("data-issues")
+      shinyjs::show("no-data-issues")
+      shinyjs::hide("data-issues-text")
+    }
   })
   
   # Go back to review screen from upload screen
