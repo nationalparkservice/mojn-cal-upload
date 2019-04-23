@@ -101,6 +101,51 @@ insertInto <- function(data, db.pool = my.pool) {
   
 }
 
+# Get info about editable columns from a column spec
+getEditCols <- function(col.spec) {
+  edit.cols <- tibble()
+  
+  for (col in names(col.spec)) {
+    # Get list of columns to include in edit boxes
+    if (col.spec[[col]]$edit) {
+      edit.cols <- bind_rows(edit.cols, c(name = col, label = col.spec[[col]]$label, type = col.spec[[col]]$type, required = col.spec[[col]]$required))
+    }
+  }
+  
+  edit.cols$required <- as.logical(edit.cols$required)
+  
+  return(edit.cols)
+}
+
+# Get names and labels for columns that are visible in the data selection table
+getTableCols <- function(col.spec) {
+  table.cols <- tibble()
+
+  for (col in names(col.spec)) {
+    # Get list of columns to include in table
+    if (col.spec[[col]]$view) {
+      table.cols <- bind_rows(table.cols, c(name = col, label = col.spec[[col]]$label))
+    }
+  }
+  
+  return(table.cols)
+}
+
+# Get list of foreign key columns
+getFkCols <- function(col.spec) {
+  fk.cols <- c()
+  
+  for (col in names(col.spec)) {
+    # Get list of fk columns
+    if (!is_empty(col.spec[[col]]$lookup)) {
+      fk.cols <- c(fk.cols, col)
+    }
+  }
+  
+  return(fk.cols)
+}
+
+
 # Col specs - it is assumed that all of the columns in the column specification should be uploaded to the database after data review
 SpCond.col.spec <- list(CalibrationDate = list(label = "Date",
                                                view = TRUE,

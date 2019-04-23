@@ -225,26 +225,9 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
     data
   })
   
-  table.cols <- tibble()
-  edit.cols <- tibble()
-  fk.cols <- c()
-  
-  for (col in names(col.spec)) {
-    # Get list of columns to include in table
-    if (col.spec[[col]]$view) {
-      table.cols <- bind_rows(table.cols, c(name = col, label = col.spec[[col]]$label))
-    }
-    # Get list of columns to include in edit boxes
-    if (col.spec[[col]]$edit) {
-      edit.cols <- bind_rows(edit.cols, c(name = col, label = col.spec[[col]]$label, type = col.spec[[col]]$type, required = col.spec[[col]]$required))
-    }
-    # Get list of fk columns
-    if (!is_empty(col.spec[[col]]$lookup)) {
-      fk.cols <- c(fk.cols, col)
-    }
-  }
-  
-  edit.cols$required <- as.logical(edit.cols$required)
+  table.cols <- getTableCols(col.spec)
+  edit.cols <- getEditCols(col.spec)
+  fk.cols <- getFkCols(col.spec)
   
   # Rename fk columns 
   table.cols[which(table.cols$name %in% fk.cols), "name"] <- paste0(table.cols$name[which(table.cols$name %in% fk.cols)], "_lookup")
