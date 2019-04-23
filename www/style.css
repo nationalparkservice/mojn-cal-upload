@@ -21,6 +21,21 @@ body {
 /* Data issues table */
 #data-issues {
   margin-bottom: 3rem;
+  width: 80% !important;
+}
+
+/* Data issues text */
+#data-issues-text {
+  width: 80%;
+}
+
+#no-data-issues {
+  width: 80%;
+}
+
+/* Submit instructions */
+#submit-instructions {
+  width: 80%;
 }
 
 /* Remove max width from inputs so that delete/cancel/save buttons line up properly */
@@ -58,6 +73,26 @@ body {
   .data-review-col {
     padding-top: 1rem;
     border-right: none;
+  }
+  
+  /* Data issues table */
+  #data-issues {
+    margin-bottom: 3rem;
+    width: 100% !important;
+  }
+  
+  /* Data issues text */
+  #data-issues-text {
+    width: 100%;
+  }
+  
+  #no-data-issues {
+    width: 100%;
+  }
+  
+  /* Submit instructions */
+  #submit-instructions {
+    width: 100%;
   }
 }
 
