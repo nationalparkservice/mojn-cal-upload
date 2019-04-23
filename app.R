@@ -317,7 +317,7 @@ server <- function(input, output, session) {
     sp.cond.issues <- sp.cond.issues %>% bind_rows(
       final.data$CalibrationSpCond() %>%
         filter((abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm)/StandardValue_microS_per_cm > 0.03) & abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm) > 5) %>%
-        mutate(Issue = paste("Pre- and post-calibration readings should be within 5 \u03bcS/cm or 3% of each other. Actual difference was", abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm), "\u03bcS/cm"), 
+        mutate(Issue = paste("Standard and post-calibration readings should be within 5 \u03bcS/cm or 3% of each other. Actual difference was", abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm), "\u03bcS/cm"), 
                Parameter = "SpCond") %>%
         select(Parameter, CalibrationDate, CalibrationTime, SpCondInstrumentID, Issue) %>%
         rename(Instrument = SpCondInstrumentID)
@@ -329,8 +329,18 @@ server <- function(input, output, session) {
     # Check that pH is within acceptable calib. error
     ph.issues <- ph.issues %>% bind_rows(
       final.data$CalibrationpH() %>%
+        filter(!is.na(TemperatureCorrectedStd_pH)) %>%
+        filter(abs(PostCalibrationReading_pH - TemperatureCorrectedStd_pH) > 0.2) %>%
+        mutate(Issue = paste("Temp-corrected standard and post-calibration readings should be within 0.2 units of each other. Actual difference was", abs(PostCalibrationReading_pH - TemperatureCorrectedStd_pH)), 
+               Parameter = "pH") %>%
+        select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
+        rename(Instrument = pHInstrumentID)
+    )
+    ph.issues <- ph.issues %>% bind_rows(
+      final.data$CalibrationpH() %>%
+        filter(is.na(TemperatureCorrectedStd_pH)) %>%
         filter(abs(PostCalibrationReading_pH - StandardValue_pH) > 0.2) %>%
-        mutate(Issue = paste("Pre- and post-calibration readings should be within 0.2 units of each other. Actual difference was", abs(PostCalibrationReading_pH - StandardValue_pH)), 
+        mutate(Issue = paste("Standard and post-calibration readings should be within 0.2 units of each other. Actual difference was", abs(PostCalibrationReading_pH - StandardValue_pH)), 
                Parameter = "pH") %>%
         select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
         rename(Instrument = pHInstrumentID)
