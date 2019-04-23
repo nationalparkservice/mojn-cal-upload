@@ -341,10 +341,27 @@ dataViewAndEdit <- function(input, output, session, data, col.spec) {
       new.data <- data.in()
       data.changed <- dataChanged(new.data[input$data.view_rows_selected, edit.cols$name], updated.row[1, ])
       data.missing <- any(is.na(updated.row[1, edit.cols$name[edit.cols$required]])) ||
-                            any(is.null(updated.row[1, edit.cols$name[edit.cols$required]]))
-      if (data.missing) {
-        # Show an error message and don't save data if required fields are blank
-        showNotification("Error: Required fields left blank. Data not saved.", type = "error")
+        any(is.null(updated.row[1, edit.cols$name[edit.cols$required]]))
+      if (data.missing && (data.changed || is.na(data.changed))) {
+        # Show a warning and confirm save if required fields are blank
+        showModal({
+          modalDialog(
+            h3("Warning: Missing data"),
+            p("Data were saved, but one or more required fields are missing data. Please review, and include an explanation in the notes section."),
+            footer = tagList(
+              modalButton("Okay")
+            ),
+            easyClose = FALSE,
+            size = "m"
+          )
+        })
+        new.data[input$data.view_rows_selected, edit.cols$name] <- updated.row[1, ]
+        dt.proxy %>% replaceData(new.data)
+        data.in(new.data)
+        showNotification("Data saved", type = "message")
+        # Re-select the row that was selected
+        dt.proxy %>% selectRows(selected.row)
+        
       } else if (data.changed || is.na(data.changed)) {
         new.data[input$data.view_rows_selected, edit.cols$name] <- updated.row[1, ]
         dt.proxy %>% replaceData(new.data)
