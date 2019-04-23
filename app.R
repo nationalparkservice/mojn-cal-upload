@@ -280,8 +280,6 @@ server <- function(input, output, session) {
     do.issues <- tibble()
     ph.issues <- tibble()
     
-    # Check for required fields
-    
     # Check for correct SpCond standards
     sp.cond.issues <- final.data$CalibrationSpCond() %>%
       filter(StandardValue_microS_per_cm != 1413 & StandardValue_microS_per_cm != 10000) %>%
@@ -336,6 +334,56 @@ server <- function(input, output, session) {
                Parameter = "pH") %>%
         select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
         rename(Instrument = pHInstrumentID)
+    )
+    
+    # Check for required fields
+    sp.cond.edit.cols <- getEditCols(SpCond.col.spec)
+    ph.edit.cols <- getEditCols(pH.col.spec)
+    do.edit.cols <- getEditCols(DO.col.spec)
+    
+    sp.cond.req <- final.data$CalibrationSpCond() %>%
+      select(sp.cond.edit.cols$name[sp.cond.edit.cols$required])
+    sp.cond.missing <- sp.cond.req %>%
+      filter(!complete.cases(sp.cond.req))
+    missing.cols <- apply(is.na(sp.cond.missing), 1, function(x) paste(sp.cond.edit.cols$label[sp.cond.edit.cols$required][x], collapse = ", "))
+    sp.cond.missing <- cbind(sp.cond.missing, MissingCols = missing.cols)
+    
+    sp.cond.issues <- sp.cond.issues %>% bind_rows(
+      sp.cond.missing %>%
+        mutate(Issue = paste("Missing required data:", MissingCols),
+               Parameter = "SpCond") %>%
+        select(Parameter, CalibrationDate, CalibrationTime, SpCondInstrumentID, Issue) %>%
+        rename(Instrument = SpCondInstrumentID)
+    )
+    
+    ph.req <- final.data$CalibrationpH() %>%
+      select(ph.edit.cols$name[ph.edit.cols$required])
+    ph.missing <- ph.req %>%
+      filter(!complete.cases(ph.req))
+    missing.cols <- apply(is.na(ph.missing), 1, function(x) paste(ph.edit.cols$label[ph.edit.cols$required][x], collapse = ", "))
+    ph.missing <- cbind(ph.missing, MissingCols = missing.cols)
+    
+    ph.issues <- ph.issues %>% bind_rows(
+      ph.missing %>%
+        mutate(Issue = paste("Missing required data:", MissingCols),
+               Parameter = "pH") %>%
+        select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
+        rename(Instrument = pHInstrumentID)
+    )
+    
+    do.req <- final.data$CalibrationDO() %>%
+      select(do.edit.cols$name[do.edit.cols$required])
+    do.missing <- do.req %>%
+      filter(!complete.cases(do.req))
+    missing.cols <- apply(is.na(do.missing), 1, function(x) paste(do.edit.cols$label[do.edit.cols$required][x], collapse = ", "))
+    do.missing <- cbind(do.missing, MissingCols = missing.cols)
+    
+    do.issues <- do.issues %>% bind_rows(
+      do.missing %>%
+        mutate(Issue = paste("Missing required data:", MissingCols),
+               Parameter = "DO") %>%
+        select(Parameter, CalibrationDate, CalibrationTime, DOInstrumentID, Issue) %>%
+        rename(Instrument = DOInstrumentID)
     )
     
     data.issues <- rbind(sp.cond.issues, do.issues, ph.issues) %>%
