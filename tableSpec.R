@@ -101,30 +101,81 @@ insertInto <- function(data, db.pool = my.pool) {
   
 }
 
+# Get info about editable columns from a column spec
+getEditCols <- function(col.spec) {
+  edit.cols <- tibble()
+  
+  for (col in names(col.spec)) {
+    # Get list of columns to include in edit boxes
+    if (col.spec[[col]]$edit) {
+      edit.cols <- bind_rows(edit.cols, c(name = col, label = col.spec[[col]]$label, type = col.spec[[col]]$type, required = col.spec[[col]]$required))
+    }
+  }
+  
+  edit.cols$required <- as.logical(edit.cols$required)
+  
+  return(edit.cols)
+}
+
+# Get names and labels for columns that are visible in the data selection table
+getTableCols <- function(col.spec) {
+  table.cols <- tibble()
+
+  for (col in names(col.spec)) {
+    # Get list of columns to include in table
+    if (col.spec[[col]]$view) {
+      table.cols <- bind_rows(table.cols, c(name = col, label = col.spec[[col]]$label))
+    }
+  }
+  
+  return(table.cols)
+}
+
+# Get list of foreign key columns
+getFkCols <- function(col.spec) {
+  fk.cols <- c()
+  
+  for (col in names(col.spec)) {
+    # Get list of fk columns
+    if (!is_empty(col.spec[[col]]$lookup)) {
+      fk.cols <- c(fk.cols, col)
+    }
+  }
+  
+  return(fk.cols)
+}
+
+
 # Col specs - it is assumed that all of the columns in the column specification should be uploaded to the database after data review
 SpCond.col.spec <- list(CalibrationDate = list(label = "Date",
                                                view = TRUE,
                                                edit = TRUE,
+                                               required = TRUE,
                                                type = "date"),
                         CalibrationTime = list(label = "Time",
                                                view = TRUE,
                                                edit = TRUE,
+                                               required = TRUE,
                                                type = "time"),
                         StandardValue_microS_per_cm = list(label = "Standard (\u03bcS/cm)",
                                                            view = FALSE,
                                                            edit = TRUE,
+                                                           required = TRUE,
                                                            type = "numeric"),
                         PreCalibrationReading_microS_per_cm = list(label = 'Pre-cal (\u03bcS/cm)',
                                                                    view = FALSE,
                                                                    edit = TRUE,
+                                                                   required = TRUE,
                                                                    type = "numeric"),
                         PostCalibrationReading_microS_per_cm = list(label = "Post-cal (\u03bcS/cm)",
                                                                     view = FALSE,
                                                                     edit = TRUE,
+                                                                    required = TRUE,
                                                                     type = "numeric"),
                         SpCondInstrumentID = list(label = "Instrument",
                                                   view = TRUE,
                                                   edit = TRUE,
+                                                  required = TRUE,
                                                   type = "select",
                                                   lookup = db.ref.wqinstr %>% collect(),
                                                   lookup.pk = "ID",
@@ -132,6 +183,7 @@ SpCond.col.spec <- list(CalibrationDate = list(label = "Date",
                         Notes = list(label = "Notes",
                                      view = FALSE,
                                      edit = TRUE,
+                                     required = FALSE,
                                      type = "notes"),
                         DateCreated = list(label = "Date Created",
                                            view = FALSE,
@@ -142,34 +194,42 @@ SpCond.col.spec <- list(CalibrationDate = list(label = "Date",
 DO.col.spec <- list(CalibrationDate = list(label = "Date",
                                            view = TRUE,
                                            edit = TRUE,
+                                           required = TRUE,
                                            type = "date"),
                     CalibrationTime = list(label = "Time",
                                            view = TRUE,
                                            edit = TRUE,
+                                           required = TRUE,
                                            type = "time"),
                     BarometricPressure_mmHg = list(label = 'Barometric press. (mmHg)',
                                                    view = FALSE,
                                                    edit = TRUE,
+                                                   required = FALSE,
                                                    type = "numeric"),
                     PreCalibrationTemperature_C = list(label = 'Pre-cal temp (C)',
                                                        view = FALSE,
                                                        edit = TRUE,
+                                                       required = FALSE,
                                                        type = "numeric"),
                     PreCalibrationReading_percent = list(label = 'Pre-cal (%)',
                                                          view = FALSE,
                                                          edit = TRUE,
+                                                         required = TRUE,
                                                          type = "numeric"),
                     PostCalibrationTemperature_C = list(label = 'Post-cal temp (C)',
                                                         view = FALSE,
                                                         edit = TRUE,
+                                                        required = FALSE,
                                                         type = "numeric"),
                     PostCalibrationReading_percent = list(label = "Post-cal (%)",
                                                           view = FALSE,
                                                           edit = TRUE,
+                                                          required = TRUE,
                                                           type = "numeric"),
                     DOInstrumentID = list(label = "Instrument",
                                           view = TRUE,
                                           edit = TRUE,
+                                          required = TRUE,
                                           type = "select",
                                           lookup = db.ref.wqinstr %>% collect(),
                                           lookup.pk = "ID",
@@ -177,48 +237,59 @@ DO.col.spec <- list(CalibrationDate = list(label = "Date",
                     Notes = list(label = "Notes",
                                  view = FALSE,
                                  edit = TRUE,
+                                 required = FALSE,
                                  type = "notes"),
                     DateCreated = list(label = "Date Created",
                                        view = FALSE,
                                        edit = FALSE,
+                                       required = FALSE,
                                        type = "date")
 )
 
 pH.col.spec <- list(CalibrationDate = list(label = "Date",
                                            view = TRUE,
                                            edit = TRUE,
+                                           required = TRUE,
                                            type = "date"),
                     CalibrationTime = list(label = "Time",
                                            view = TRUE,
                                            edit = TRUE,
+                                           required = TRUE,
                                            type = "time"),
                     StandardValue_pH = list(label = "Std.",
                                             view = TRUE,
                                             edit = TRUE,
+                                            required = TRUE,
                                             type = "numeric"),
                     TemperatureCorrectedStd_pH = list(label = "Temp. corrected std.",
                                                       view = FALSE,
                                                       edit = TRUE,
+                                                      required = FALSE,
                                                       type = "numeric"),
                     PreCalibrationTemperature_C = list(label = 'Pre-cal temp (C)',
                                                        view = FALSE,
                                                        edit = TRUE,
+                                                       required = FALSE,
                                                        type = "numeric"),
                     PreCalibrationReading_pH = list(label = 'Pre-cal pH',
                                                     view = FALSE,
                                                     edit = TRUE,
+                                                    required = TRUE,
                                                     type = "numeric"),
                     PostCalibrationTemperature_C = list(label = 'Post-cal temp (C)',
                                                         view = FALSE,
                                                         edit = TRUE,
+                                                        required = FALSE,
                                                         type = "numeric"),
                     PostCalibrationReading_pH = list(label = "Post-cal pH",
                                                      view = FALSE,
                                                      edit = TRUE,
+                                                     required = TRUE,
                                                      type = "numeric"),
                     pHInstrumentID = list(label = "Instrument",
                                           view = TRUE,
                                           edit = TRUE,
+                                          required = TRUE,
                                           type = "select",
                                           lookup = db.ref.wqinstr %>% collect(),
                                           lookup.pk = "ID",
@@ -226,10 +297,12 @@ pH.col.spec <- list(CalibrationDate = list(label = "Date",
                     Notes = list(label = "Notes",
                                  view = FALSE,
                                  edit = TRUE,
+                                 required = FALSE,
                                  type = "notes"),
                     DateCreated = list(label = "Date Created",
                                        view = FALSE,
                                        edit = FALSE,
+                                       required = FALSE,
                                        type = "date")
 )
 

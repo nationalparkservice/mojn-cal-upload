@@ -66,7 +66,11 @@ ui <- tagList(
                                             tags$div(class = "panel-body",
                                                      fluidRow(
                                                        column(12, align = "center",
-                                                              h2(id = "submit-header", "Submit data to the database"),
+                                                              h2(id = "data-issues-header", "1 - Correct any remaining data issues"),
+                                                              hidden(p(id = "no-data-issues", "Automated checks found no problems in the data.")),
+                                                              hidden(p(id = "data-issues-text", "Please review the list of potential issues below. To make changes, go back to the Data Review screen. Be sure to save your edits before returning to this screen.")),
+                                                              hidden(dataTableOutput("data-issues")),
+                                                              h2(id = "submit-header", "2 - Submit data to the database"),
                                                               p(id = "submit-instructions", "You are about to submit water quality calibration data. Before you click submit, make sure that you have thoroughly reviewed all of the data."),
                                                               hidden(h2(id = "submit.success.msg", "Success!")),
                                                               hidden(p(id = "submit.success.info", "Data were successfully added to the database. You may now close this browser tab.")),
@@ -268,9 +272,158 @@ server <- function(input, output, session) {
     final.data$CalibrationSpCond <- callModule(dataViewAndEdit, id = "CalibrationSpCond", data = clean.data$CalibrationSpCond, col.spec = table.spec$CalibrationSpCond$col.spec)
     final.data$CalibrationDO <- callModule(dataViewAndEdit, id = "CalibrationDO", data = clean.data$CalibrationDO, col.spec = table.spec$CalibrationDO$col.spec)
     final.data$CalibrationpH <- callModule(dataViewAndEdit, id = "CalibrationpH", data = clean.data$CalibrationpH, col.spec = table.spec$CalibrationpH$col.spec) 
-    
   }
   
+  # Generate a list of possible data issues
+  data.issues <- reactive({
+    sp.cond.issues <- tibble()
+    do.issues <- tibble()
+    ph.issues <- tibble()
+    
+    # Check for correct SpCond standards
+    sp.cond.issues <- final.data$CalibrationSpCond() %>%
+      filter(StandardValue_microS_per_cm != 1413 & StandardValue_microS_per_cm != 10000) %>%
+      mutate(Issue = paste("Expected standard of 1413 or 10000, not", StandardValue_microS_per_cm), 
+             Parameter = "SpCond") %>%
+      select(Parameter, CalibrationDate, CalibrationTime, SpCondInstrumentID, Issue) %>%
+      rename(Instrument = SpCondInstrumentID)
+    
+    # Check for correct pH standards
+    ph.issues <- final.data$CalibrationpH() %>%
+      filter(StandardValue_pH != 4 & StandardValue_pH != 7 & StandardValue_pH != 10) %>%
+      mutate(Issue = paste("Expected standard of 4, 7, or 10, not", StandardValue_pH), 
+             Parameter = "pH") %>%
+      select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
+      rename(Instrument = pHInstrumentID)
+    
+    # Check that temperature is within acceptable calib. error
+    do.issues <- final.data$CalibrationDO() %>%
+      filter(abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C) > 0.2) %>%
+      mutate(Issue = paste("Pre- and post-calibration temperatures should be within 0.2 C of each other. Actual difference was", abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C), "C"), 
+             Parameter = "DO") %>%
+      select(Parameter, CalibrationDate, CalibrationTime, DOInstrumentID, Issue) %>%
+      rename(Instrument = DOInstrumentID)
+    
+    ph.issues <- ph.issues %>% bind_rows(
+      final.data$CalibrationpH() %>%
+        filter(abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C) > 0.2) %>%
+        mutate(Issue = paste("Pre- and post-calibration temperatures should be within 0.2 C of each other. Actual difference was", abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C), "C"), 
+               Parameter = "pH") %>%
+        select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
+        rename(Instrument = pHInstrumentID)
+    )
+    
+    # Check that sp. cond. is within acceptable calib. error
+    sp.cond.issues <- sp.cond.issues %>% bind_rows(
+      final.data$CalibrationSpCond() %>%
+        filter((abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm)/StandardValue_microS_per_cm > 0.03) & abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm) > 5) %>%
+        mutate(Issue = paste("Standard and post-calibration readings should be within 5 \u03bcS/cm or 3% of each other. Actual difference was", abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm), "\u03bcS/cm"), 
+               Parameter = "SpCond") %>%
+        select(Parameter, CalibrationDate, CalibrationTime, SpCondInstrumentID, Issue) %>%
+        rename(Instrument = SpCondInstrumentID)
+    )
+    
+    # Check that DO is within acceptable calib. error
+    # TODO: Hydro team is still working on how to calculate this (if possible)
+    
+    # Check that pH is within acceptable calib. error
+    ph.issues <- ph.issues %>% bind_rows(
+      final.data$CalibrationpH() %>%
+        filter(!is.na(TemperatureCorrectedStd_pH)) %>%
+        filter(abs(PostCalibrationReading_pH - TemperatureCorrectedStd_pH) > 0.2) %>%
+        mutate(Issue = paste("Temp-corrected standard and post-calibration readings should be within 0.2 units of each other. Actual difference was", abs(PostCalibrationReading_pH - TemperatureCorrectedStd_pH)), 
+               Parameter = "pH") %>%
+        select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
+        rename(Instrument = pHInstrumentID)
+    )
+    ph.issues <- ph.issues %>% bind_rows(
+      final.data$CalibrationpH() %>%
+        filter(is.na(TemperatureCorrectedStd_pH)) %>%
+        filter(abs(PostCalibrationReading_pH - StandardValue_pH) > 0.2) %>%
+        mutate(Issue = paste("Standard and post-calibration readings should be within 0.2 units of each other. Actual difference was", abs(PostCalibrationReading_pH - StandardValue_pH)), 
+               Parameter = "pH") %>%
+        select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
+        rename(Instrument = pHInstrumentID)
+    )
+    
+    # Check for required fields
+    sp.cond.edit.cols <- getEditCols(SpCond.col.spec)
+    ph.edit.cols <- getEditCols(pH.col.spec)
+    do.edit.cols <- getEditCols(DO.col.spec)
+    
+    sp.cond.req <- final.data$CalibrationSpCond() %>%
+      select(sp.cond.edit.cols$name[sp.cond.edit.cols$required])
+    sp.cond.missing <- sp.cond.req %>%
+      filter(!complete.cases(sp.cond.req))
+    missing.cols <- apply(is.na(sp.cond.missing), 1, function(x) paste(sp.cond.edit.cols$label[sp.cond.edit.cols$required][x], collapse = ", "))
+    sp.cond.missing <- cbind(sp.cond.missing, MissingCols = missing.cols)
+    
+    sp.cond.issues <- sp.cond.issues %>% bind_rows(
+      sp.cond.missing %>%
+        mutate(Issue = paste("Missing required data:", MissingCols),
+               Parameter = "SpCond") %>%
+        select(Parameter, CalibrationDate, CalibrationTime, SpCondInstrumentID, Issue) %>%
+        rename(Instrument = SpCondInstrumentID)
+    )
+    
+    ph.req <- final.data$CalibrationpH() %>%
+      select(ph.edit.cols$name[ph.edit.cols$required])
+    ph.missing <- ph.req %>%
+      filter(!complete.cases(ph.req))
+    missing.cols <- apply(is.na(ph.missing), 1, function(x) paste(ph.edit.cols$label[ph.edit.cols$required][x], collapse = ", "))
+    ph.missing <- cbind(ph.missing, MissingCols = missing.cols)
+    
+    ph.issues <- ph.issues %>% bind_rows(
+      ph.missing %>%
+        mutate(Issue = paste("Missing required data:", MissingCols),
+               Parameter = "pH") %>%
+        select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
+        rename(Instrument = pHInstrumentID)
+    )
+    
+    do.req <- final.data$CalibrationDO() %>%
+      select(do.edit.cols$name[do.edit.cols$required])
+    do.missing <- do.req %>%
+      filter(!complete.cases(do.req))
+    missing.cols <- apply(is.na(do.missing), 1, function(x) paste(do.edit.cols$label[do.edit.cols$required][x], collapse = ", "))
+    do.missing <- cbind(do.missing, MissingCols = missing.cols)
+    
+    do.issues <- do.issues %>% bind_rows(
+      do.missing %>%
+        mutate(Issue = paste("Missing required data:", MissingCols),
+               Parameter = "DO") %>%
+        select(Parameter, CalibrationDate, CalibrationTime, DOInstrumentID, Issue) %>%
+        rename(Instrument = DOInstrumentID)
+    )
+    
+    data.issues <- rbind(sp.cond.issues, do.issues, ph.issues) %>%
+      left_join(db.ref.wqinstr, by = c("Instrument" = "ID"), copy = TRUE) %>%
+      select(Parameter, CalibrationDate, CalibrationTime, Label, Issue) %>%
+      rename(Instrument = Label) %>%
+      arrange(Parameter, CalibrationDate, CalibrationTime, Instrument, Issue)
+    
+    data.issues
+  })
+  
+  # Show a list of possible data issues
+  output$`data-issues` <- renderDataTable({
+    if (nrow(data.issues()) > 0) {
+      datatable(data.issues(), 
+                selection = list(
+                  mode = "single",
+                  target = "row"),
+                width = "100%",
+                colnames = c("Parameter", "Date", "Time", "Instrument", "Issue"),
+                rownames = FALSE,
+                options = list(
+                  dom = 't',
+                  ordering = FALSE,
+                  scrollX = "true",
+                  paging = "true"
+                )
+      )
+    }
+  })
   
   # Data upload
   observeEvent(input$submit, {
@@ -367,6 +520,16 @@ server <- function(input, output, session) {
     shinyjs::hide("review-card")
     shinyjs::show("upload-card")
     shinyjs::show("back.review")
+    
+    if (nrow(data.issues()) > 0) {
+      shinyjs::show("data-issues")
+      shinyjs::hide("no-data-issues")
+      shinyjs::show("data-issues-text")
+    } else {
+      shinyjs::hide("data-issues")
+      shinyjs::show("no-data-issues")
+      shinyjs::hide("data-issues-text")
+    }
   })
   
   # Go back to review screen from upload screen
