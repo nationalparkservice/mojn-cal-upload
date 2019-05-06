@@ -53,9 +53,10 @@ singleSelectDT <- function (data, col.names) {
             rownames = FALSE,
             options = list(
               order = sort,
-              dom = 't',
-              scrollX = "true",
-              paging = "true"
+              dom = 'tp',
+              scrollX = TRUE,
+              scrollY = "400px",
+              paging = FALSE
             )
   )
 }
