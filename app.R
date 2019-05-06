@@ -292,23 +292,23 @@ server <- function(input, output, session) {
     ph.issues <- final.data$CalibrationpH() %>%
       filter(StandardValue_pH != 4 & StandardValue_pH != 7 & StandardValue_pH != 10) %>%
       mutate(Issue = paste("Expected standard of 4, 7, or 10, not", StandardValue_pH), 
-             Parameter = "pH") %>%
+             Parameter = paste("pH", StandardValue_pH)) %>%
       select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
       rename(Instrument = pHInstrumentID)
     
     # Check that temperature is within acceptable calib. error
     do.issues <- final.data$CalibrationDO() %>%
-      filter(abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C) > 0.2) %>%
-      mutate(Issue = paste("Pre- and post-calibration temperatures should be within 0.2 C of each other. Actual difference was", abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C), "C"), 
+      filter(round(abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C), 2) > 0.2) %>%
+      mutate(Issue = paste("Pre- and post-calibration temperatures should be within 0.2 C of each other. Actual difference was", round(abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C), 2), "C"), 
              Parameter = "DO") %>%
       select(Parameter, CalibrationDate, CalibrationTime, DOInstrumentID, Issue) %>%
       rename(Instrument = DOInstrumentID)
     
     ph.issues <- ph.issues %>% bind_rows(
       final.data$CalibrationpH() %>%
-        filter(abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C) > 0.2) %>%
-        mutate(Issue = paste("Pre- and post-calibration temperatures should be within 0.2 C of each other. Actual difference was", abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C), "C"), 
-               Parameter = "pH") %>%
+        filter(round(abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C), 2) > 0.2) %>%
+        mutate(Issue = paste("Pre- and post-calibration temperatures should be within 0.2 C of each other. Actual difference was", round(abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C), 2), "C"), 
+               Parameter = paste("pH", StandardValue_pH)) %>%
         select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
         rename(Instrument = pHInstrumentID)
     )
@@ -316,8 +316,8 @@ server <- function(input, output, session) {
     # Check that sp. cond. is within acceptable calib. error
     sp.cond.issues <- sp.cond.issues %>% bind_rows(
       final.data$CalibrationSpCond() %>%
-        filter((abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm)/StandardValue_microS_per_cm > 0.03) & abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm) > 5) %>%
-        mutate(Issue = paste("Standard and post-calibration readings should be within 5 \u03bcS/cm or 3% of each other. Actual difference was", abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm), "\u03bcS/cm"), 
+        filter((round(abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm)/StandardValue_microS_per_cm, 3) > 0.03) & round(abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm), 1) > 5) %>%
+        mutate(Issue = paste("Standard and post-calibration readings should be within 5 \u03bcS/cm or 3% of each other. Actual difference was", round(abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm), 1), "\u03bcS/cm"), 
                Parameter = "SpCond") %>%
         select(Parameter, CalibrationDate, CalibrationTime, SpCondInstrumentID, Issue) %>%
         rename(Instrument = SpCondInstrumentID)
@@ -330,18 +330,18 @@ server <- function(input, output, session) {
     ph.issues <- ph.issues %>% bind_rows(
       final.data$CalibrationpH() %>%
         filter(!is.na(TemperatureCorrectedStd_pH)) %>%
-        filter(abs(PostCalibrationReading_pH - TemperatureCorrectedStd_pH) > 0.2) %>%
-        mutate(Issue = paste("Temp-corrected standard and post-calibration readings should be within 0.2 units of each other. Actual difference was", abs(PostCalibrationReading_pH - TemperatureCorrectedStd_pH)), 
-               Parameter = "pH") %>%
+        filter(round(abs(PostCalibrationReading_pH - TemperatureCorrectedStd_pH), 2) > 0.2) %>%
+        mutate(Issue = paste("Temp-corrected standard and post-calibration readings should be within 0.2 units of each other. Actual difference was", round(abs(PostCalibrationReading_pH - TemperatureCorrectedStd_pH), 2)), 
+               Parameter = paste("pH", StandardValue_pH)) %>%
         select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
         rename(Instrument = pHInstrumentID)
     )
     ph.issues <- ph.issues %>% bind_rows(
       final.data$CalibrationpH() %>%
         filter(is.na(TemperatureCorrectedStd_pH)) %>%
-        filter(abs(PostCalibrationReading_pH - StandardValue_pH) > 0.2) %>%
-        mutate(Issue = paste("Standard and post-calibration readings should be within 0.2 units of each other. Actual difference was", abs(PostCalibrationReading_pH - StandardValue_pH)), 
-               Parameter = "pH") %>%
+        filter(round(abs(PostCalibrationReading_pH - StandardValue_pH), 2) > 0.2) %>%
+        mutate(Issue = paste("Standard and post-calibration readings should be within 0.2 units of each other. Actual difference was", round(abs(PostCalibrationReading_pH - StandardValue_pH), 2)), 
+               Parameter = paste("pH", StandardValue_pH)) %>%
         select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
         rename(Instrument = pHInstrumentID)
     )
@@ -376,7 +376,7 @@ server <- function(input, output, session) {
     ph.issues <- ph.issues %>% bind_rows(
       ph.missing %>%
         mutate(Issue = paste("Missing required data:", MissingCols),
-               Parameter = "pH") %>%
+               Parameter = paste("pH", StandardValue_pH)) %>%
         select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
         rename(Instrument = pHInstrumentID)
     )
