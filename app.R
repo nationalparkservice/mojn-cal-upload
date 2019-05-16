@@ -15,6 +15,8 @@ source("modules.R")
 
 # Global vars
 path.to.data <- "M:\\MONITORING\\WQCalibration\\DataFromFilemaker"
+path.to.raw.archive <- paste(path.to.data, "Archive", "Raw", sep = "\\")
+path.to.uploaded.archive <- paste(path.to.data, "Archive", "Uploaded", sep = "\\")
 
 # Define UI for application that imports calibration data from .csv and uploads to database
 ui <- tagList(
@@ -461,6 +463,7 @@ server <- function(input, output, session) {
           size = "s"
         )
       })
+      
       # Disable submit button after successful upload
       shinyjs::disable("submit")
       shinyjs::show("submit.success.msg")
@@ -468,6 +471,17 @@ server <- function(input, output, session) {
       shinyjs::hide("submit-header")
       shinyjs::hide("submit-instructions")
       success <- TRUE
+      
+      # Archive raw data files after successful upload
+      file.copy(from = data.file.paths, to = path.to.raw.archive, overwrite = TRUE, copy.date = TRUE)
+      file.remove(data.file.paths)
+      
+      # Archive a copy of uploaded data
+      data <- isolate(final.data)
+      time.stamp <- paste(format(Sys.Date(), "%Y%m%d"), format(Sys.time(), "%H%M"), sep = "_")
+      write_csv(data$CalibrationDO(), path = paste0(path.to.uploaded.archive, "\\CalibrationDO_", time.stamp, ".csv"), append = TRUE, col_names = TRUE)
+      write_csv(data$CalibrationSpCond(), path = paste0(path.to.uploaded.archive, "\\CalibrationSpCond_", time.stamp, ".csv"), append = TRUE, col_names = TRUE)
+      write_csv(data$CalibrationpH(), path = paste0(path.to.uploaded.archive, "\\CalibrationpH_", time.stamp, ".csv"), append = TRUE, col_names = TRUE)
     },
     error = function(c) {
       # If unsuccessful, display error message
