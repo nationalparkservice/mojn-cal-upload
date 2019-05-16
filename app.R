@@ -173,7 +173,7 @@ server <- function(input, output, session) {
   
   importStatusText <- function(count) {
     if (count == 0) {
-        txt <- "No new calibration data found."
+      txt <- "No new calibration data found."
     } else {
       txt <- paste(count, "calibration(s) pending review.", sep = " ")
     }
