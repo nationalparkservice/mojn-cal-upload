@@ -282,121 +282,132 @@ server <- function(input, output, session) {
     do.issues <- tibble()
     ph.issues <- tibble()
     
-    # Check for correct SpCond standards
-    sp.cond.issues <- final.data$CalibrationSpCond() %>%
-      filter(StandardValue_microS_per_cm != 1413 & StandardValue_microS_per_cm != 10000) %>%
-      mutate(Issue = paste("Expected standard of 1413 or 10000, not", StandardValue_microS_per_cm), 
-             Parameter = "SpCond") %>%
-      select(Parameter, CalibrationDate, CalibrationTime, SpCondInstrumentID, Issue) %>%
-      rename(Instrument = SpCondInstrumentID)
+    if (nrow(final.data$CalibrationSpCond()) > 0) {
+      # Check for correct SpCond standards
+      sp.cond.issues <- final.data$CalibrationSpCond() %>%
+        filter(StandardValue_microS_per_cm != 1413 & StandardValue_microS_per_cm != 10000) %>%
+        mutate(Issue = paste("Expected standard of 1413 or 10000, not", StandardValue_microS_per_cm), 
+               Parameter = "SpCond") %>%
+        select(Parameter, CalibrationDate, CalibrationTime, SpCondInstrumentID, Issue) %>%
+        rename(Instrument = SpCondInstrumentID)
+      
+      # Check that sp. cond. is within acceptable calib. error
+      sp.cond.issues <- sp.cond.issues %>% bind_rows(
+        final.data$CalibrationSpCond() %>%
+          filter((round(abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm)/StandardValue_microS_per_cm, 3) > 0.03) & round(abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm), 1) > 5) %>%
+          mutate(Issue = paste("Standard and post-calibration readings should be within 5 \u03bcS/cm or 3% of each other. Actual difference was", round(abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm), 1), "\u03bcS/cm"), 
+                 Parameter = "SpCond") %>%
+          select(Parameter, CalibrationDate, CalibrationTime, SpCondInstrumentID, Issue) %>%
+          rename(Instrument = SpCondInstrumentID)
+      )
+      
+      # Check for required fields
+      sp.cond.edit.cols <- getEditCols(SpCond.col.spec)
+      
+      sp.cond.req <- final.data$CalibrationSpCond() %>%
+        select(sp.cond.edit.cols$name[sp.cond.edit.cols$required])
+      sp.cond.missing <- sp.cond.req %>%
+        filter(!complete.cases(sp.cond.req))
+      missing.cols <- apply(is.na(sp.cond.missing), 1, function(x) paste(sp.cond.edit.cols$label[sp.cond.edit.cols$required][x], collapse = ", "))
+      sp.cond.missing <- cbind(sp.cond.missing, MissingCols = missing.cols)
+      
+      sp.cond.issues <- sp.cond.issues %>% bind_rows(
+        sp.cond.missing %>%
+          mutate(Issue = paste("Missing required data:", MissingCols),
+                 Parameter = "SpCond") %>%
+          select(Parameter, CalibrationDate, CalibrationTime, SpCondInstrumentID, Issue) %>%
+          rename(Instrument = SpCondInstrumentID)
+      )
+    }
     
-    # Check for correct pH standards
-    ph.issues <- final.data$CalibrationpH() %>%
-      filter(StandardValue_pH != 4 & StandardValue_pH != 7 & StandardValue_pH != 10) %>%
-      mutate(Issue = paste("Expected standard of 4, 7, or 10, not", StandardValue_pH), 
-             Parameter = paste("pH", StandardValue_pH)) %>%
-      select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
-      rename(Instrument = pHInstrumentID)
+    if (nrow(final.data$CalibrationpH()) > 0) {
+      # Check for correct pH standards
+      ph.issues <- final.data$CalibrationpH() %>%
+        filter(StandardValue_pH != 4 & StandardValue_pH != 7 & StandardValue_pH != 10) %>%
+        mutate(Issue = paste("Expected standard of 4, 7, or 10, not", StandardValue_pH), 
+               Parameter = paste("pH", StandardValue_pH)) %>%
+        select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
+        rename(Instrument = pHInstrumentID)
+      
+      # Check that temperature is within acceptable calib. error
+      ph.issues <- ph.issues %>% bind_rows(
+        final.data$CalibrationpH() %>%
+          filter(round(abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C), 2) > 0.2) %>%
+          mutate(Issue = paste("Pre- and post-calibration temperatures should be within 0.2 C of each other. Actual difference was", round(abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C), 2), "C"), 
+                 Parameter = paste("pH", StandardValue_pH)) %>%
+          select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
+          rename(Instrument = pHInstrumentID)
+      )
+      
+      # Check that pH is within acceptable calib. error
+      ph.issues <- ph.issues %>% bind_rows(
+        final.data$CalibrationpH() %>%
+          filter(!is.na(TemperatureCorrectedStd_pH)) %>%
+          filter(round(abs(PostCalibrationReading_pH - TemperatureCorrectedStd_pH), 2) > 0.2) %>%
+          mutate(Issue = paste("Temp-corrected standard and post-calibration readings should be within 0.2 units of each other. Actual difference was", round(abs(PostCalibrationReading_pH - TemperatureCorrectedStd_pH), 2)), 
+                 Parameter = paste("pH", StandardValue_pH)) %>%
+          select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
+          rename(Instrument = pHInstrumentID)
+      )
+      ph.issues <- ph.issues %>% bind_rows(
+        final.data$CalibrationpH() %>%
+          filter(is.na(TemperatureCorrectedStd_pH)) %>%
+          filter(round(abs(PostCalibrationReading_pH - StandardValue_pH), 2) > 0.2) %>%
+          mutate(Issue = paste("Standard and post-calibration readings should be within 0.2 units of each other. Actual difference was", round(abs(PostCalibrationReading_pH - StandardValue_pH), 2)), 
+                 Parameter = paste("pH", StandardValue_pH)) %>%
+          select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
+          rename(Instrument = pHInstrumentID)
+      )
+      
+      # Check for required fields
+      ph.edit.cols <- getEditCols(pH.col.spec)
+      
+      ph.req <- final.data$CalibrationpH() %>%
+        select(ph.edit.cols$name[ph.edit.cols$required])
+      ph.missing <- ph.req %>%
+        filter(!complete.cases(ph.req))
+      missing.cols <- apply(is.na(ph.missing), 1, function(x) paste(ph.edit.cols$label[ph.edit.cols$required][x], collapse = ", "))
+      ph.missing <- cbind(ph.missing, MissingCols = missing.cols)
+      
+      ph.issues <- ph.issues %>% bind_rows(
+        ph.missing %>%
+          mutate(Issue = paste("Missing required data:", MissingCols),
+                 Parameter = paste("pH", StandardValue_pH)) %>%
+          select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
+          rename(Instrument = pHInstrumentID)
+      )
+    }
     
-    # Check that temperature is within acceptable calib. error
-    do.issues <- final.data$CalibrationDO() %>%
-      filter(round(abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C), 2) > 0.2) %>%
-      mutate(Issue = paste("Pre- and post-calibration temperatures should be within 0.2 C of each other. Actual difference was", round(abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C), 2), "C"), 
-             Parameter = "DO") %>%
-      select(Parameter, CalibrationDate, CalibrationTime, DOInstrumentID, Issue) %>%
-      rename(Instrument = DOInstrumentID)
-    
-    ph.issues <- ph.issues %>% bind_rows(
-      final.data$CalibrationpH() %>%
+    if (nrow(final.data$CalibrationDO()) > 0) {
+      # Check that temperature is within acceptable calib. error
+      do.issues <- final.data$CalibrationDO() %>%
         filter(round(abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C), 2) > 0.2) %>%
         mutate(Issue = paste("Pre- and post-calibration temperatures should be within 0.2 C of each other. Actual difference was", round(abs(PreCalibrationTemperature_C - PostCalibrationTemperature_C), 2), "C"), 
-               Parameter = paste("pH", StandardValue_pH)) %>%
-        select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
-        rename(Instrument = pHInstrumentID)
-    )
-    
-    # Check that sp. cond. is within acceptable calib. error
-    sp.cond.issues <- sp.cond.issues %>% bind_rows(
-      final.data$CalibrationSpCond() %>%
-        filter((round(abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm)/StandardValue_microS_per_cm, 3) > 0.03) & round(abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm), 1) > 5) %>%
-        mutate(Issue = paste("Standard and post-calibration readings should be within 5 \u03bcS/cm or 3% of each other. Actual difference was", round(abs(PostCalibrationReading_microS_per_cm - StandardValue_microS_per_cm), 1), "\u03bcS/cm"), 
-               Parameter = "SpCond") %>%
-        select(Parameter, CalibrationDate, CalibrationTime, SpCondInstrumentID, Issue) %>%
-        rename(Instrument = SpCondInstrumentID)
-    )
-    
-    # Check that DO is within acceptable calib. error
-    # TODO: Hydro team is still working on how to calculate this (if possible)
-    
-    # Check that pH is within acceptable calib. error
-    ph.issues <- ph.issues %>% bind_rows(
-      final.data$CalibrationpH() %>%
-        filter(!is.na(TemperatureCorrectedStd_pH)) %>%
-        filter(round(abs(PostCalibrationReading_pH - TemperatureCorrectedStd_pH), 2) > 0.2) %>%
-        mutate(Issue = paste("Temp-corrected standard and post-calibration readings should be within 0.2 units of each other. Actual difference was", round(abs(PostCalibrationReading_pH - TemperatureCorrectedStd_pH), 2)), 
-               Parameter = paste("pH", StandardValue_pH)) %>%
-        select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
-        rename(Instrument = pHInstrumentID)
-    )
-    ph.issues <- ph.issues %>% bind_rows(
-      final.data$CalibrationpH() %>%
-        filter(is.na(TemperatureCorrectedStd_pH)) %>%
-        filter(round(abs(PostCalibrationReading_pH - StandardValue_pH), 2) > 0.2) %>%
-        mutate(Issue = paste("Standard and post-calibration readings should be within 0.2 units of each other. Actual difference was", round(abs(PostCalibrationReading_pH - StandardValue_pH), 2)), 
-               Parameter = paste("pH", StandardValue_pH)) %>%
-        select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
-        rename(Instrument = pHInstrumentID)
-    )
-    
-    # Check for required fields
-    sp.cond.edit.cols <- getEditCols(SpCond.col.spec)
-    ph.edit.cols <- getEditCols(pH.col.spec)
-    do.edit.cols <- getEditCols(DO.col.spec)
-    
-    sp.cond.req <- final.data$CalibrationSpCond() %>%
-      select(sp.cond.edit.cols$name[sp.cond.edit.cols$required])
-    sp.cond.missing <- sp.cond.req %>%
-      filter(!complete.cases(sp.cond.req))
-    missing.cols <- apply(is.na(sp.cond.missing), 1, function(x) paste(sp.cond.edit.cols$label[sp.cond.edit.cols$required][x], collapse = ", "))
-    sp.cond.missing <- cbind(sp.cond.missing, MissingCols = missing.cols)
-    
-    sp.cond.issues <- sp.cond.issues %>% bind_rows(
-      sp.cond.missing %>%
-        mutate(Issue = paste("Missing required data:", MissingCols),
-               Parameter = "SpCond") %>%
-        select(Parameter, CalibrationDate, CalibrationTime, SpCondInstrumentID, Issue) %>%
-        rename(Instrument = SpCondInstrumentID)
-    )
-    
-    ph.req <- final.data$CalibrationpH() %>%
-      select(ph.edit.cols$name[ph.edit.cols$required])
-    ph.missing <- ph.req %>%
-      filter(!complete.cases(ph.req))
-    missing.cols <- apply(is.na(ph.missing), 1, function(x) paste(ph.edit.cols$label[ph.edit.cols$required][x], collapse = ", "))
-    ph.missing <- cbind(ph.missing, MissingCols = missing.cols)
-    
-    ph.issues <- ph.issues %>% bind_rows(
-      ph.missing %>%
-        mutate(Issue = paste("Missing required data:", MissingCols),
-               Parameter = paste("pH", StandardValue_pH)) %>%
-        select(Parameter, CalibrationDate, CalibrationTime, pHInstrumentID, Issue) %>%
-        rename(Instrument = pHInstrumentID)
-    )
-    
-    do.req <- final.data$CalibrationDO() %>%
-      select(do.edit.cols$name[do.edit.cols$required])
-    do.missing <- do.req %>%
-      filter(!complete.cases(do.req))
-    missing.cols <- apply(is.na(do.missing), 1, function(x) paste(do.edit.cols$label[do.edit.cols$required][x], collapse = ", "))
-    do.missing <- cbind(do.missing, MissingCols = missing.cols)
-    
-    do.issues <- do.issues %>% bind_rows(
-      do.missing %>%
-        mutate(Issue = paste("Missing required data:", MissingCols),
                Parameter = "DO") %>%
         select(Parameter, CalibrationDate, CalibrationTime, DOInstrumentID, Issue) %>%
         rename(Instrument = DOInstrumentID)
-    )
+      
+      # Check that DO is within acceptable calib. error
+      # TODO: Hydro team is still working on how to calculate this (if possible)
+      
+      # Check for required fields
+      do.edit.cols <- getEditCols(DO.col.spec)
+      
+      do.req <- final.data$CalibrationDO() %>%
+        select(do.edit.cols$name[do.edit.cols$required])
+      do.missing <- do.req %>%
+        filter(!complete.cases(do.req))
+      missing.cols <- apply(is.na(do.missing), 1, function(x) paste(do.edit.cols$label[do.edit.cols$required][x], collapse = ", "))
+      do.missing <- cbind(do.missing, MissingCols = missing.cols)
+      
+      do.issues <- do.issues %>% bind_rows(
+        do.missing %>%
+          mutate(Issue = paste("Missing required data:", MissingCols),
+                 Parameter = "DO") %>%
+          select(Parameter, CalibrationDate, CalibrationTime, DOInstrumentID, Issue) %>%
+          rename(Instrument = DOInstrumentID)
+      )
+    }
     
     data.issues <- rbind(sp.cond.issues, do.issues, ph.issues) %>%
       left_join(db.ref.wqinstr, by = c("Instrument" = "ID"), copy = TRUE) %>%
