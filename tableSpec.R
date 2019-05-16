@@ -4,7 +4,7 @@ library(pool)
 my.pool <- dbPool(drv = odbc::odbc(),
                Driver = "SQL Server Native Client 11.0",
                Server = "INPLAKE52V\\MOJN",
-               Database = "Testing_MOJN_SharedTables",
+               Database = "MOJN_SharedTables",
                Trusted_Connection = "Yes")
 
 onStop(function() {
