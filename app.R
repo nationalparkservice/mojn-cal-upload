@@ -132,7 +132,7 @@ server <- function(input, output, session) {
   # Figure out which, if any, records are already present in the database
   if (nrow(all.data$CalibrationSpCond > 0)) {
     existing.SpCond <- db.SpCond %>%
-      filter(GUID %in% all.data$CalibrationSpCond$GUID) %>%
+      filter(GUID %in% !!all.data$CalibrationSpCond$GUID) %>%
       collect() 
   } else {
     existing.SpCond <- db.SpCond %>%
@@ -142,7 +142,7 @@ server <- function(input, output, session) {
   
   if (nrow(all.data$CalibrationDO > 0)) {
     existing.DO <- db.DO %>%
-      filter(GUID %in% all.data$CalibrationDO$GUID) %>%
+      filter(GUID %in% !!all.data$CalibrationDO$GUID) %>%
       collect() 
   } else {
     existing.DO <- db.DO %>%
@@ -152,7 +152,7 @@ server <- function(input, output, session) {
   
   if (nrow(all.data$CalibrationpH > 0)) {
     existing.pH <- db.pH %>%
-      filter(GUID %in% all.data$CalibrationpH$GUID) %>%
+      filter(GUID %in% !!all.data$CalibrationpH$GUID) %>%
       collect() 
   } else {
     existing.pH <- db.pH %>%
@@ -192,8 +192,8 @@ server <- function(input, output, session) {
     do.ignored.count <- nrow(existing.DO)
     ph.ignored.count <- nrow(existing.pH)
     
-    summary <- data_frame(metric = c("Specific Conductance", "Dissolved Oxygen", "pH"),
-                          import.count = c(spcond.count, do.count, ph.count))
+    summary <- tibble(metric = c("Specific Conductance", "Dissolved Oxygen", "pH"),
+                      import.count = c(spcond.count, do.count, ph.count))
     
     summary <- summary %>%
       mutate(import.message = paste(vImportStatusText(import.count), 
@@ -266,7 +266,7 @@ server <- function(input, output, session) {
     if (nrow(data.imports[[table$table.name]]) > 0) {
       clean.data[[table$table.name]] <- data.imports[[table$table.name]] %>% table$data.manip()
     } else {
-      clean.data[[table$table.name]] <- data_frame()
+      clean.data[[table$table.name]] <- tibble()
     }
   }
   
