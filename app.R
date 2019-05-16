@@ -15,6 +15,7 @@ source("modules.R")
 
 # Global vars
 path.to.data <- "M:\\MONITORING\\WQCalibration\\DataFromFilemaker"
+path.to.archive <- paste(path.to.data, "UploadedToDB", sep = "\\")
 
 # Define UI for application that imports calibration data from .csv and uploads to database
 ui <- tagList(
@@ -461,6 +462,7 @@ server <- function(input, output, session) {
           size = "s"
         )
       })
+      
       # Disable submit button after successful upload
       shinyjs::disable("submit")
       shinyjs::show("submit.success.msg")
@@ -468,6 +470,10 @@ server <- function(input, output, session) {
       shinyjs::hide("submit-header")
       shinyjs::hide("submit-instructions")
       success <- TRUE
+      
+      # Archive raw data files after successful upload
+      file.copy(from = data.file.paths, to = path.to.archive, overwrite = TRUE, copy.date = TRUE)
+      file.remove(data.file.paths)
     },
     error = function(c) {
       # If unsuccessful, display error message
