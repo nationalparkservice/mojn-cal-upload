@@ -1,11 +1,10 @@
 library(pool)
 
 # Database connection
-my.pool <- dbPool(drv = odbc::odbc(),
-               Driver = "SQL Server Native Client 11.0",
-               Server = "INPLAKE52V\\MOJN",
-               Database = "MOJN_SharedTables",
-               Trusted_Connection = "Yes")
+params <- readr::read_csv("M:/MONITORING/WQCalibration/sharedtables-database-conn.csv", col_types = "cccc", ) %>%
+  as.list()
+params$drv <- odbc::odbc()
+my.pool <- do.call(pool::dbPool, params)
 
 onStop(function() {
   poolClose(my.pool)
