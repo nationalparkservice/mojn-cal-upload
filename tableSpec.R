@@ -1,10 +1,11 @@
 library(pool)
 
 # Database connection
-params <- readr::read_csv("M:/MONITORING/WQCalibration/sharedtables-database-conn.csv", col_types = "cccc", ) %>%
-  as.list()
-params$drv <- odbc::odbc()
-my.pool <- do.call(pool::dbPool, params)
+# params <- readr::read_csv("M:/MONITORING/WQCalibration/sharedtables-database-conn.csv", col_types = "cccc", ) %>%
+#   as.list()
+# params$drv <- odbc::odbc()
+# my.pool <- do.call(pool::dbPool, params)
+my.pool <- pool::dbPool(odbc::odbc(), dsn = "MOJN_SharedTables")
 
 onStop(function() {
   poolClose(my.pool)
