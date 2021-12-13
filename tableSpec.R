@@ -328,7 +328,7 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                                    CalibrationDate = format(CalibrationDate, "%Y-%m-%d"),
                                                    DateCreated = format(DateCreated, "%Y-%m-%d %H:%M:%S")) %>%  # Format dates and times so they display properly
                                             left_join(db.ref.wqinstr, by = c("DOInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
-                                            select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -DOInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
+                                            select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -DOInstrumentGUID, -Label, -Code) %>%  # Get rid of unnecessary columns
                                             rename(DOInstrumentID = ID)
                                           return(data)
                                         })),
@@ -354,7 +354,7 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                                    CalibrationDate = format(CalibrationDate, "%Y-%m-%d"),
                                                    DateCreated = format(DateCreated, "%Y-%m-%d %H:%M:%S")) %>%  # Format dates and times so they display properly
                                             left_join(db.ref.wqinstr, by = c("pHInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
-                                            select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -pHInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
+                                            select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -pHInstrumentGUID, -Label, -Code) %>%  # Get rid of unnecessary columns
                                             rename(pHInstrumentID = ID)
                                           return(data)
                                         })),
@@ -377,7 +377,7 @@ table.spec <- list(CalibrationDO = list(table.name = "CalibrationDO",
                                                        CalibrationDate = format(CalibrationDate, "%Y-%m-%d"),
                                                        DateCreated = format(DateCreated, "%Y-%m-%d %H:%M:%S")) %>%  # Format dates and times so they display properly
                                                 left_join(db.ref.wqinstr, by = c("SpCondInstrumentGUID" = "GUID"), copy = TRUE) %>%  # Join to WQ instrument table
-                                                select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -SpCondInstrumentGUID, -Label) %>%  # Get rid of unnecessary columns
+                                                select(-Summary, -Model, -Manufacturer, -NPSPropertyTag, -IsActive, -SpCondInstrumentGUID, -Label, -Code) %>%  # Get rid of unnecessary columns
                                                 rename(SpCondInstrumentID = ID)
                                               return(data)
                                             }))
