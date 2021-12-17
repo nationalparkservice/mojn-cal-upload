@@ -161,16 +161,27 @@ server <- function(input, output, session) {
   }
   
   # Omit any data already in the database
-  data.imports$CalibrationSpCond <- all.data$CalibrationSpCond %>%
-    filter(!(GUID %in% existing.SpCond$GUID))
+  if (nrow(all.data$CalibrationSpCond) > 0) {
+    data.imports$CalibrationSpCond <- all.data$CalibrationSpCond %>%
+      filter(!(GUID %in% existing.SpCond$GUID))
+  } else {
+    data.imports$CalibrationSpCond <- all.data$CalibrationSpCond
+  }
   
-  data.imports$CalibrationDO <- all.data$CalibrationDO %>%
-    filter(!(GUID %in% existing.DO$GUID))
+  if (nrow(all.data$CalibrationDO) > 0) {
+    data.imports$CalibrationDO <- all.data$CalibrationDO %>%
+      filter(!(GUID %in% existing.DO$GUID))
+  } else {
+    data.imports$CalibrationDO <- all.data$CalibrationDO
+  }
   
-  data.imports$CalibrationpH <- all.data$CalibrationpH %>%
-    filter(!(GUID %in% existing.pH$GUID))
-  
-  
+  if (nrow(all.data$CalibrationpH) > 0) {
+    data.imports$CalibrationpH <- all.data$CalibrationpH %>%
+      filter(!(GUID %in% existing.pH$GUID))
+  } else {
+    data.imports$CalibrationpH <- all.data$CalibrationpH
+  }
+
   importStatusText <- function(count) {
     if (count == 0) {
       txt <- "No new calibration data found."
